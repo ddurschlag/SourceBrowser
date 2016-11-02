@@ -281,7 +281,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             Parallel.ForEach(
                 projects,
-                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                new ParallelOptions { MaxDegreeOfParallelism = Configuration.Parallelism },
                 project =>
                 {
                     try

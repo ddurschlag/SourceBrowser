@@ -58,7 +58,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             byte[] zeroId = SymbolIdService.ZeroId;
             int zeroIdLength = zeroId.Length;
             Parallel.ForEach(locationsToPatch,
-                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                new ParallelOptions { MaxDegreeOfParallelism = Configuration.Parallelism },
                 kvp =>
                 {
                     kvp.Value.Sort();
@@ -92,9 +92,17 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 {
                     symbolId = line.Substring(1);
                     bucket = new List<Tuple<string, long>>();
-                    result.Add(symbolId, bucket);
+                    if (result.ContainsKey(symbolId))
+                    {
+                        bucket = null;
+                        Log.Exception("Duplicate symbol id: " + symbolId, true);
+                    }
+                    else
+                    {
+                        result.Add(symbolId, bucket);
+                    }
                 }
-                else if (!string.IsNullOrWhiteSpace(line))
+                else if (!string.IsNullOrWhiteSpace(line) && bucket != null)
                 {
                     var parts = line.Split(';');
                     var streamOffset = long.Parse(parts[1]);

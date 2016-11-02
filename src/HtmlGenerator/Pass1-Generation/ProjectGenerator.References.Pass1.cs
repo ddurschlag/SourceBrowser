@@ -238,7 +238,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             Parallel.ForEach(
                 referencesToAssembly,
-                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                new ParallelOptions { MaxDegreeOfParallelism = Configuration.Parallelism },
                 referencesToSymbol =>
                     {
                         try

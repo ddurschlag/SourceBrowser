@@ -95,7 +95,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                         types,
                         new ParallelOptions
                         {
-                            MaxDegreeOfParallelism = Environment.ProcessorCount
+                            MaxDegreeOfParallelism = Configuration.Parallelism
                         },
                         type =>
                         {

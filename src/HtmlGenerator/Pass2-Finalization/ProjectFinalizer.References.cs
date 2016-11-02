@@ -28,7 +28,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             Log.Write("Creating references files for " + this.AssemblyId);
             Parallel.ForEach(
                 files,
-                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                new ParallelOptions { MaxDegreeOfParallelism = Configuration.Parallelism },
                 referencesFile =>
             {
                 try
