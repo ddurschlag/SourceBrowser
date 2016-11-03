@@ -21,10 +21,12 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             var projects = new List<string>();
             var properties = new Dictionary<string, string>();
             var emitAssemblyList = false;
-            var force = false;
+            bool? force = null;
             var noBuiltInFederations = false;
             var offlineFederations = new Dictionary<string, string>();
             var federations = new HashSet<string>();
+            bool? forceContinue = null;
+            bool waitAtEnd = false;
 
             foreach (var arg in args)
             {
@@ -37,6 +39,12 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 if (arg == "/force")
                 {
                     force = true;
+                    continue;
+                }
+
+                if (arg == "/unforce")
+                {
+                    force = false;
                     continue;
                 }
 
@@ -108,7 +116,25 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                         Log.Message($"Adding federation '{server}' (offline from '{assemblyListFileName}').");
                         continue;
                     }
-                    
+
+                    continue;
+                }
+
+                if (arg == "/continue")
+                {
+                    forceContinue = true;
+                    continue;
+                }
+
+                if (arg == "/uncontinue")
+                {
+                    forceContinue = false;
+                    continue;
+                }
+
+                if (arg == "/wait")
+                {
+                    waitAtEnd = true;
                     continue;
                 }
 
@@ -140,7 +166,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             Log.MessageLogFilePath = Path.Combine(Paths.SolutionDestinationFolder, Log.MessageLogFile);
 
             // Warning, this will delete and recreate your destination folder
-            Paths.PrepareDestinationFolder(force);
+            Paths.PrepareDestinationFolder(force, forceContinue);
 
             using (Disposable.Timing("Generating website"))
             {
@@ -152,6 +178,10 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
                 IndexSolutions(projects, properties, federation);
                 FinalizeProjects(emitAssemblyList, federation);
+            }
+            if (waitAtEnd)
+            {
+                Console.ReadLine();
             }
         }
 

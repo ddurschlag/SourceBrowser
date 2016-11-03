@@ -80,7 +80,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             var lines = File.ReadAllLines(declarationMapFile);
 
-            //File.Delete(declarationMapFile);
+            File.Delete(declarationMapFile);
 
             List<Tuple<string, long>> bucket = null;
             string symbolId = null;

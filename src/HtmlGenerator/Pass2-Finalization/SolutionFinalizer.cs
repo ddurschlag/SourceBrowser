@@ -14,6 +14,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 {
     public partial class SolutionFinalizer
     {
+        public const string PATCH_MARKER = "<!-- Patched -->";
+
         public string SolutionDestinationFolder;
         public IEnumerable<ProjectFinalizer> projects;
         public readonly Dictionary<string, ProjectFinalizer> assemblyNameToProjectMap = new Dictionary<string, ProjectFinalizer>();
@@ -188,7 +190,15 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
 
             var sourceLines = File.ReadAllLines(fileName);
-            List<string> lines = new List<string>(sourceLines.Length + project.ReferencingAssemblies.Count + 2);
+
+            //Check if already patched -- if so, skip it
+            if (sourceLines.Length > 0 && sourceLines[0].Equals(PATCH_MARKER))
+                return;
+
+            List<string> lines = new List<string>(sourceLines.Length + project.ReferencingAssemblies.Count + 3);
+
+            //Add marker to indicate this file has already been patched
+            lines.Add(PATCH_MARKER);
 
             RelativeState state = RelativeState.Before;
             foreach (var sourceLine in sourceLines)

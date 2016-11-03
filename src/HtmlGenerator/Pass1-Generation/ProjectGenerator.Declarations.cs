@@ -73,7 +73,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
         }
 
-        private void GenerateDeclarations()
+        private void GenerateDeclarations(bool overwrite = false)
         {
             Log.Write("Declarations...");
 
@@ -107,7 +107,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 }
             }
 
-            Serialization.WriteDeclaredSymbols(ProjectDestinationFolder, lines);
+            Serialization.WriteDeclaredSymbols(ProjectDestinationFolder, lines, overwrite);
         }
 
         public static void GenerateSymbolIDToListOfDeclarationLocationsMap(

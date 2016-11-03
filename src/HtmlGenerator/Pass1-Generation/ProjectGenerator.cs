@@ -51,6 +51,26 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             Directory.CreateDirectory(Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName));
         }
 
+        private static HashSet<string> RedirectFileNames = new HashSet<string>
+        {
+            "A",
+            "A1",
+            "A2",
+            "A3",
+            "A4",
+            "A5",
+            "A6",
+            "A7",
+            "A8",
+            "A9",
+            "Aa",
+            "Ab",
+            "Ac",
+            "Ad",
+            "Ae",
+            "Af",
+        };
+
         private void AddHtmlFilesToRedirectMap()
         {
             var files = Directory
@@ -59,8 +79,11 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             {
                 var relativePath = file.Substring(ProjectDestinationFolder.Length + 1).Replace('\\', '/');
                 relativePath = relativePath.Substring(0, relativePath.Length - 5); // strip .html
-                AddFileToRedirectMap(relativePath);
-                OtherFiles.Add(relativePath);
+                if (!RedirectFileNames.Contains(relativePath))
+                {
+                    AddFileToRedirectMap(relativePath);
+                    OtherFiles.Add(relativePath);
+                }
             }
         }
 
@@ -127,7 +150,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                             {
                                 while (partition.MoveNext())
                                 {
-                                  await GenerateDocument(partition.Current);
+                                    await GenerateDocument(partition.Current);
                                 }
                             }
                         }));
@@ -168,7 +191,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         public void GenerateNonProjectFolder()
         {
             AddHtmlFilesToRedirectMap();
-            GenerateDeclarations();
+            GenerateDeclarations(true);
             GenerateSymbolIDToListOfDeclarationLocationsMap(
                 ProjectDestinationFolder,
                 SymbolIDToListOfLocationsMap);

@@ -26,7 +26,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             var fileName = Path.Combine(projectDestinationFolder, Constants.IDResolvingFileName + prefix + ".html");
 
-            using (var writer = new StreamWriter(fileName, append: true, encoding: Encoding.UTF8))
+            File.Delete(fileName);
+            using (var writer = new StreamWriter(fileName, append: false, encoding: Encoding.UTF8))
             {
                 Markup.WriteMetadataToSourceRedirectPrefix(writer);
 

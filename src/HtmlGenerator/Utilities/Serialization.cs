@@ -12,10 +12,18 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
     {
         public static void WriteDeclaredSymbols(
             string projectDestinationFolder,
-            IEnumerable<string> lines)
+            IEnumerable<string> lines,
+            bool overwrite = false)
         {
             var fileName = Path.Combine(projectDestinationFolder, Constants.DeclaredSymbolsFileName + ".txt");
-            File.AppendAllLines(fileName, lines, Encoding.UTF8);
+            if (overwrite)
+            {
+                File.WriteAllLines(fileName, lines, Encoding.UTF8);
+            }
+            else
+            {
+                File.AppendAllLines(fileName, lines, Encoding.UTF8);
+            }
         }
 
         public static string GetIconForExtension(string document)
