@@ -15,12 +15,13 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         private readonly string assemblyAttributesFileName;
 
         public Project Project { get; private set; }
-        public Dictionary<string, List<Tuple<string, long>>> SymbolIDToListOfLocationsMap { get; private set; }
+        public SymbolIndex SymbolIDToListOfLocationsMap { get; private set; }
         public Dictionary<ISymbol, string> DeclaredSymbols { get; private set; }
         public Dictionary<ISymbol, ISymbol> BaseMembers { get; private set; }
         public MultiDictionary<ISymbol, ISymbol> ImplementedInterfaceMembers { get; set; }
 
         public string ProjectDestinationFolder { get; private set; }
+        public IO.ProjectManager IOManager { get; private set; }
         public string AssemblyName { get; private set; }
         public SolutionGenerator SolutionGenerator { get; private set; }
         public string ProjectSourcePath { get; set; }
@@ -48,6 +49,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         public ProjectGenerator(string folderName, string solutionDestinationFolder) : this()
         {
             ProjectDestinationFolder = Path.Combine(solutionDestinationFolder, folderName);
+            //TODO: is this needed? Should this constructor actually be a different implementation of the same interface?
+            //IOManager = new IO.ProjectManager(ProjectDestinationFolder);
             Directory.CreateDirectory(Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName));
         }
 
@@ -93,13 +96,15 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             {
                 SymbolIDToListOfLocationsMap.Add(
                     SymbolIdService.GetId(filePath),
-                    new List<Tuple<string, long>> { Tuple.Create(filePath, 0L) });
+                    filePath,
+                    0L
+                );
             }
         }
 
         private ProjectGenerator()
         {
-            this.SymbolIDToListOfLocationsMap = new Dictionary<string, List<Tuple<string, long>>>();
+            this.SymbolIDToListOfLocationsMap = new SymbolIndex();
             this.OtherFiles = new List<string>();
         }
 
@@ -113,12 +118,14 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     return;
                 }
 
-                ProjectDestinationFolder = GetProjectDestinationPath(Project, SolutionGenerator.SolutionDestinationFolder);
-                if (ProjectDestinationFolder == null)
+                if (!TrySetAssemblyName(Project))
                 {
                     Log.Exception("Errors evaluating project: " + Project.Id);
                     return;
                 }
+
+                ProjectDestinationFolder = GetProjectDestinationPath(AssemblyName, SolutionGenerator.SolutionDestinationFolder);
+                IOManager = SolutionGenerator.IOManager.GetProjectManager(AssemblyName);
 
                 Log.Write(ProjectDestinationFolder, ConsoleColor.DarkCyan);
 
@@ -194,7 +201,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             GenerateDeclarations(true);
             GenerateSymbolIDToListOfDeclarationLocationsMap(
                 ProjectDestinationFolder,
-                SymbolIDToListOfLocationsMap);
+                SymbolIDToListOfLocationsMap,
+                true);
         }
 
         private void GenerateNamespaceExplorer()
@@ -245,17 +253,23 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             return true;
         }
-
-        private string GetProjectDestinationPath(Project project, string solutionDestinationPath)
+        
+        private bool TrySetAssemblyName(Project project)
         {
             var assemblyName = project.AssemblyName;
             if (assemblyName == "<Error>")
             {
-                return null;
+                AssemblyName = null;
+                return false;
             }
 
             AssemblyName = SymbolIdService.GetAssemblyId(assemblyName);
-            string subfolder = Path.Combine(solutionDestinationPath, AssemblyName);
+            return true;
+        }
+
+        private static string GetProjectDestinationPath(string assemblyId, string solutionDestinationPath)
+        {
+            string subfolder = Path.Combine(solutionDestinationPath, assemblyId);
             return subfolder;
         }
     }

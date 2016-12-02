@@ -14,7 +14,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         private static readonly HashSet<string> alreadyProcessed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private Dictionary<string, List<Reference>> references;
         private List<string> declarations;
-        public Dictionary<string, List<Tuple<string, long>>> SymbolIDToListOfLocationsMap { get; private set; }
+        public SymbolIndex SymbolIDToListOfLocationsMap { get; private set; }
 
         public void Generate(IEnumerable<string> typeScriptFiles, string solutionDestinationFolder)
         {
@@ -27,7 +27,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             declarations = new List<string>();
             references = new Dictionary<string, List<Reference>>(StringComparer.OrdinalIgnoreCase);
-            SymbolIDToListOfLocationsMap = new Dictionary<string, List<Tuple<string, long>>>();
+            SymbolIDToListOfLocationsMap = new SymbolIndex();
 
             var list = new List<string>();
             string libFile = null;

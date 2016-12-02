@@ -173,7 +173,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 var federation = noBuiltInFederations ? new Federation(null) : new Federation(federations);
                 foreach (var entry in offlineFederations)
                 {
-                    federation.AddFederation(entry.Key, entry.Value);
+                    federation.AddFederation(entry.Key, File.ReadAllText(entry.Value));
                 }
 
                 IndexSolutions(projects, properties, federation);
@@ -241,6 +241,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             foreach (var path in solutionFilePaths)
             {
+                Console.WriteLine("Press enter to start " + path);
+                Console.ReadLine();
                 using (Disposable.Timing("Generating " + path))
                 {
                     using (var solutionGenerator = new SolutionGenerator(

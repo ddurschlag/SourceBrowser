@@ -40,6 +40,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     projectCollection,
                     ProjectLoadSettings.IgnoreMissingImports);
 
+                Log.Write("Generating MSBuildFiles for " + this.AssemblyName, ConsoleColor.Cyan);
                 var msbuildSupport = new MSBuildSupport(this);
                 msbuildSupport.Generate(ProjectFilePath, destinationFileName, msbuildProject, true);
 

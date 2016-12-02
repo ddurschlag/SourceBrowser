@@ -52,24 +52,14 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         }
 
         public static void AddDeclaredSymbolToRedirectMap(
-            Dictionary<string, List<Tuple<string, long>>> symbolIDToListOfLocationsMap,
+            SymbolIndex symbolIDToListOfLocationsMap,
             string symbolId,
             string documentRelativeFilePath,
             long positionInFile)
         {
-            List<Tuple<string, long>> bucket = null;
             lock (symbolIDToListOfLocationsMap)
             {
-                if (!symbolIDToListOfLocationsMap.TryGetValue(symbolId, out bucket))
-                {
-                    bucket = new List<Tuple<string, long>>();
-                    symbolIDToListOfLocationsMap.Add(symbolId, bucket);
-                }
-            }
-
-            lock (bucket)
-            {
-                bucket.Add(Tuple.Create(documentRelativeFilePath, positionInFile));
+                symbolIDToListOfLocationsMap.Add(symbolId, new SymbolLocation(documentRelativeFilePath, positionInFile));
             }
         }
 
@@ -112,18 +102,19 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         public static void GenerateSymbolIDToListOfDeclarationLocationsMap(
             string projectDestinationFolder,
-            Dictionary<string, List<Tuple<string, long>>> symbolIDToListOfLocationsMap)
+            SymbolIndex symbolIDToListOfLocationsMap,
+            bool overwrite = false)
         {
             Log.Write("Symbol ID to list of locations map...");
             var fileName = Path.Combine(projectDestinationFolder, Constants.DeclarationMap + ".txt");
-            using (var writer = new StreamWriter(fileName, append: true, encoding: Encoding.UTF8))
+            using (var writer = new StreamWriter(fileName, append: !overwrite, encoding: Encoding.UTF8))
             {
                 foreach (var kvp in symbolIDToListOfLocationsMap)
                 {
-                    writer.WriteLine("=" + kvp.Key);
-                    foreach (var sourceFileAndOffset in kvp.Value)
+                    writer.WriteLine("=" + kvp.Item1);
+                    foreach (var location in kvp.Item2)
                     {
-                        writer.WriteLine(sourceFileAndOffset.Item1 + ";" + sourceFileAndOffset.Item2);
+                        SymbolLocation.Write(writer, location);
                     }
                 }
             }

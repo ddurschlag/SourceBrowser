@@ -16,8 +16,23 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             new Dictionary<string, Dictionary<string, List<Reference>>>();
         public IEnumerable<string> UsedReferences { get; private set; }
 
-        public void AddReference(
+        public void AddLegacyReferenceForMSBuild(
             string documentDestinationPath,
+            string lineText,
+            int referenceStartOnLine,
+            int referenceLength,
+            int lineNumber,
+            string fromAssemblyName,
+            string toAssemblyName,
+            ISymbol symbol,
+            string symbolId,
+            ReferenceKind kind)
+        {
+            AddReference(ref lineText, ref referenceStartOnLine, referenceLength, lineNumber, fromAssemblyName, toAssemblyName, symbol, symbolId, kind, documentDestinationPath);
+        }
+
+        public void AddReference(
+            IO.Destination documentDestination,
             SourceText referenceText,
             string destinationAssemblyName,
             ISymbol symbol,
@@ -40,7 +55,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             string lineText = line.ToString();
 
             AddReference(
-                documentDestinationPath,
+                documentDestination,
                 lineText,
                 start,
                 referenceString.Length,
@@ -53,7 +68,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         }
 
         public void AddReference(
-            string documentDestinationPath,
+            IO.Destination documentDestination,
             string lineText,
             int referenceStartOnLine,
             int referenceLength,
@@ -63,6 +78,12 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             ISymbol symbol,
             string symbolId,
             ReferenceKind kind)
+        {
+            var documentDestinationPath = IOManager.GetLegacyDocumentDestinationPath(documentDestination);
+            AddReference(ref lineText, ref referenceStartOnLine, referenceLength, lineNumber, fromAssemblyName, toAssemblyName, symbol, symbolId, kind, documentDestinationPath);
+        }
+
+        private void AddReference(ref string lineText, ref int referenceStartOnLine, int referenceLength, int lineNumber, string fromAssemblyName, string toAssemblyName, ISymbol symbol, string symbolId, ReferenceKind kind, string documentDestinationPath)
         {
             string localPath = Paths.MakeRelativeToFolder(
                 documentDestinationPath,
@@ -215,6 +236,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             Dictionary<string, Dictionary<string, List<Reference>>> referencesByTargetAssemblyAndSymbolId)
         {
             Log.Write("References data files...", ConsoleColor.White);
+
+            Log.Write("All from assemblies: " + string.Join(", ", referencesByTargetAssemblyAndSymbolId.SelectMany(kvp => kvp.Value.SelectMany(kvp2 => kvp2.Value.Select(r => r.FromAssemblyId))).Distinct()), ConsoleColor.Cyan);
 
             foreach (var referencesToAssembly in referencesByTargetAssemblyAndSymbolId)
             {

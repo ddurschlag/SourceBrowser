@@ -28,6 +28,8 @@
     <Compile Include="PriorityQueue.cs" />
     <Compile Include="ProcessLaunchService.cs" />
     <Compile Include="RangeUtilities.cs" />
+    <Compile Include="SymbolIndex.cs" />
+    <Compile Include="SymbolLocation.cs" />
     <Compile Include="TextUtilities.cs" />
   </ItemGroup>
   <Import Project="..\..\Common.targets" />

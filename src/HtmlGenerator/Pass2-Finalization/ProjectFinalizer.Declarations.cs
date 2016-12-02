@@ -25,28 +25,28 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 this.SolutionFinalizer.SolutionDestinationFolder,
                 this.ProjectDestinationFolder,
                 symbolIDToListOfLocationsMap.ToDictionary(
-                    kvp => kvp.Key,
-                    kvp => kvp.Value.Select(t => t.Item1.Replace('\\', '/'))));
+                    kvp => kvp.Item1,
+                    kvp => kvp.Item2.Select(t => t.FilePath.Replace('\\', '/'))));
 
             var locationsToPatch = new Dictionary<string, List<long>>();
             GetLocationsToPatch(referencesFolder, locationsToPatch, symbolIDToListOfLocationsMap);
             Patch(locationsToPatch);
         }
 
-        private void GetLocationsToPatch(string referencesFolder, Dictionary<string, List<long>> locationsToPatch, Dictionary<string, List<Tuple<string, long>>> symbolIDToListOfLocationsMap)
+        private void GetLocationsToPatch(string referencesFolder, Dictionary<string, List<long>> locationsToPatch, SymbolIndex symbolIDToListOfLocationsMap)
         {
             foreach (var kvp in symbolIDToListOfLocationsMap)
             {
-                var symbolId = kvp.Key;
+                var symbolId = kvp.Item1;
                 var referencesFileForSymbol = Path.Combine(referencesFolder, symbolId + ".txt");
                 if (!File.Exists(referencesFileForSymbol))
                 {
-                    foreach (var location in kvp.Value)
+                    foreach (var location in kvp.Item2)
                     {
-                        if (location.Item2 != 0)
+                        if (location.Offset != 0)
                         {
-                            var filePath = Path.Combine(ProjectDestinationFolder, location.Item1 + ".html");
-                            AddLocationToPatch(locationsToPatch, filePath, location.Item2);
+                            var filePath = Path.Combine(ProjectDestinationFolder, location.FilePath + ".html");
+                            AddLocationToPatch(locationsToPatch, filePath, location.Offset);
                         }
                     }
                 }
@@ -74,15 +74,14 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 });
         }
 
-        private Dictionary<string, List<Tuple<string, long>>> ReadSymbolIDToListOfLocationsMap(string declarationMapFile)
+        private SymbolIndex ReadSymbolIDToListOfLocationsMap(string declarationMapFile)
         {
-            var result = new Dictionary<string, List<Tuple<string, long>>>();
+            var result = new SymbolIndex();
 
             var lines = File.ReadAllLines(declarationMapFile);
 
-            File.Delete(declarationMapFile);
+            //File.Delete(declarationMapFile);
 
-            List<Tuple<string, long>> bucket = null;
             string symbolId = null;
 
             for (int i = 0; i < lines.Length; i++)
@@ -91,23 +90,10 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 if (line.StartsWith("="))
                 {
                     symbolId = line.Substring(1);
-                    bucket = new List<Tuple<string, long>>();
-                    if (result.ContainsKey(symbolId))
-                    {
-                        bucket = null;
-                        Log.Exception("Duplicate symbol id: " + symbolId, true);
-                    }
-                    else
-                    {
-                        result.Add(symbolId, bucket);
-                    }
                 }
-                else if (!string.IsNullOrWhiteSpace(line) && bucket != null)
+                else if (!string.IsNullOrWhiteSpace(line) && symbolId != null)
                 {
-                    var parts = line.Split(';');
-                    var streamOffset = long.Parse(parts[1]);
-                    var tuple = Tuple.Create(parts[0], streamOffset);
-                    bucket.Add(tuple);
+                    result.Add(symbolId, SymbolLocation.Read(line));
                 }
             }
 

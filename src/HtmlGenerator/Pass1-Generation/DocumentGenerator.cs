@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -8,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.SourceBrowser.Common;
+using StreamWriter = System.IO.StreamWriter;
 
 namespace Microsoft.SourceBrowser.HtmlGenerator
 {
@@ -15,7 +15,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
     {
         public ProjectGenerator projectGenerator;
         public Document Document;
-        public string documentDestinationFilePath;
+        public IO.Destination documentDestination;
         public string relativePathToRoot;
         public string documentRelativeFilePathWithoutHtmlExtension;
 
@@ -76,7 +76,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 documentRelativeFilePathWithoutHtmlExtension,
                 0);
 
-            if (File.Exists(documentDestinationFilePath))
+            if (IOManager.DestinationExists(documentDestination))
             {
                 // someone already generated this file, likely a shared linked file from elsewhere
                 return;
@@ -84,57 +84,33 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             this.classifier = new Classification();
 
-            Log.Write(documentDestinationFilePath);
+            Log.Write(documentDestination.ToString());
 
             try
             {
-                var directoryName = Path.GetDirectoryName(documentDestinationFilePath);
-                var sanitized = Paths.SanitizeFolder(directoryName);
-                if (directoryName != sanitized)
-                {
-                    Log.Exception("Illegal characters in path: " + directoryName + " Project: " + this.projectGenerator.AssemblyName);
-                }
-
-                if (Configuration.CreateFoldersOnDisk)
-                {
-                    Directory.CreateDirectory(directoryName);
-                }
+                IOManager.CreateDirectory(documentDestination);
             }
-            catch (PathTooLongException)
+            catch (Exception ex)
             {
-                // there's one case where a path is too long - we don't care enough about it
+                Log.Exception(ex, "Couldn't create destination directory", false);
                 return;
             }
 
-            if (Configuration.WriteDocumentsToDisk)
+            using (var streamWriter = IOManager.GetWriter(documentDestination))
             {
-                using (var streamWriter = new StreamWriter(
-                    documentDestinationFilePath,
-                    append: false,
-                    encoding: Encoding.UTF8))
-                {
-                    await GenerateHtml(streamWriter);
-                }
-            }
-            else
-            {
-                using (var memoryStream = new MemoryStream())
-                using (var streamWriter = new StreamWriter(memoryStream))
-                {
-                    await GeneratePre(streamWriter);
-                }
+                await GenerateHtml(streamWriter);
             }
         }
 
         private void CalculateDocumentDestinationPath()
         {
             documentRelativeFilePathWithoutHtmlExtension = Paths.GetRelativeFilePathInProject(Document);
-            documentDestinationFilePath = Path.Combine(ProjectDestinationFolder, documentRelativeFilePathWithoutHtmlExtension) + ".html";
+            documentDestination = new IO.Destination(Document.Folders.ToArray(), Document.FilePath != null ? System.IO.Path.GetFileName(Document.FilePath) : Document.Name);
         }
 
         private void CalculateRelativePathToRoot()
         {
-            this.relativePathToRoot = Paths.CalculateRelativePathToRoot(documentDestinationFilePath, SolutionDestinationFolder);
+            this.relativePathToRoot = IOManager.GetPathToSolutionRoot(documentDestination);
         }
 
         private async Task GenerateHtml(StreamWriter writer)
@@ -284,72 +260,12 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             string documentLink = string.Format("File: <a id=\"filePath\" class=\"blueLink\" href=\"{0}\" target=\"_top\">{1}</a><br/>", DocumentUrl, documentDisplayName);
             string projectLink = string.Format("Project: <a id=\"projectPath\" class=\"blueLink\" href=\"{0}\" target=\"_top\">{1}</a> ({2})", projectUrl, projectDisplayName, projectGenerator.AssemblyName);
 
-            string fileShareLink = GetFileShareLink();
-            if (fileShareLink != null)
-            {
-                fileShareLink = Markup.A(fileShareLink, "File", "_blank");
-            }
-            else
-            {
-                fileShareLink = "";
-            }
+            // TODO: Refactor after removal of fileshare/web links which should be plugins
 
-            string webLink = GetWebLink();
-            if (webLink != null)
-            {
-                webLink = Markup.A(webLink, "Web&nbsp;Access", "_blank");
-            }
-            else
-            {
-                webLink = "";
-            }
-
-            string firstRow = string.Format("<tr><td>{0}</td><td>{1}</td></tr>", documentLink, webLink);
-            string secondRow = string.Format("<tr><td>{0}</td><td>{1}</td></tr>", projectLink, fileShareLink);
+            string firstRow = string.Format("<tr><td>{0}</td><td></td></tr>", documentLink);
+            string secondRow = string.Format("<tr><td>{0}</td><td></td></tr>", projectLink);
 
             Markup.WriteLinkPanel(writeLine, firstRow, secondRow);
-        }
-
-        private string GetWebLink()
-        {
-            var serverPath = this.projectGenerator.SolutionGenerator.ServerPath;
-            if (string.IsNullOrEmpty(serverPath))
-            {
-                return null;
-            }
-
-            string filePath = GetDocumentPathFromSourceSolutionRoot();
-            filePath = filePath.Replace('\\', '/');
-
-            string urlTemplate = @"{0}{1}";
-
-            string url = string.Format(
-                urlTemplate,
-                serverPath,
-                filePath);
-            return url;
-        }
-
-        private string GetDocumentPathFromSourceSolutionRoot()
-        {
-            string projectPath = Path.GetDirectoryName(projectGenerator.ProjectSourcePath);
-            string filePath = @"C:\" + Path.Combine(projectPath, documentRelativeFilePathWithoutHtmlExtension);
-            filePath = Path.GetFullPath(filePath);
-            filePath = filePath.Substring(3); // strip the artificial "C:\"
-            return filePath;
-        }
-
-        private string GetFileShareLink()
-        {
-            var networkShare = this.projectGenerator.SolutionGenerator.NetworkShare;
-            if (string.IsNullOrEmpty(networkShare))
-            {
-                return null;
-            }
-
-            string filePath = GetDocumentPathFromSourceSolutionRoot();
-            filePath = Path.Combine(networkShare, filePath);
-            return filePath;
         }
 
         private async Task GeneratePre(StreamWriter writer, int lineCount = 0)

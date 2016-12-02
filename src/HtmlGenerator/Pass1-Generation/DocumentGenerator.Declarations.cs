@@ -1,5 +1,4 @@
-﻿using System.IO;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 
 namespace Microsoft.SourceBrowser.HtmlGenerator
 {
@@ -27,9 +26,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             string symbolId = SymbolIdService.GetId(symbol);
 
-            string referencesFilePath = Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName, symbolId + ".html");
-            string href = Paths.MakeRelativeToFile(referencesFilePath, documentDestinationFilePath);
-            href = href.Replace('\\', '/');
+            string href = IOManager.GetRelativeReferenceHref(symbolId + ".html", documentDestination);
 
             var result = new HtmlElementInfo
             {

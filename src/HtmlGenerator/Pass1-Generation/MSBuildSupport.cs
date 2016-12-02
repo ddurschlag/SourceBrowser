@@ -235,7 +235,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 text.Substring(0, leadingTriviaWidth),
                 text.Substring(text.Length - trailingTriviaWidth));
 
-            projectGenerator.AddReference(
+            projectGenerator.AddLegacyReferenceForMSBuild(
                 destinationHtmlFilePath,
                 lineText,
                 startPositionOnLine,
@@ -284,7 +284,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 text.Substring(0, leadingTriviaWidth),
                 text.Substring(text.Length - trailingTriviaWidth));
 
-            projectGenerator.AddReference(
+            projectGenerator.AddLegacyReferenceForMSBuild(
                 destinationHtmlFilePath,
                 lineText,
                 startPositionOnLine,
@@ -327,7 +327,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 text.Substring(0, leadingTriviaWidth),
                 text.Substring(text.Length - trailingTriviaWidth));
 
-            projectGenerator.AddReference(
+            projectGenerator.AddLegacyReferenceForMSBuild(
                 destinationHtmlFilePath,
                 lineText,
                 startPositionOnLine,
@@ -371,7 +371,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 text.Substring(0, leadingTriviaWidth),
                 text.Substring(text.Length - trailingTriviaWidth));
 
-            projectGenerator.AddReference(
+            projectGenerator.AddLegacyReferenceForMSBuild(
                 destinationHtmlFilePath,
                 lineText,
                 startPositionOnLine,
@@ -508,7 +508,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     if (assemblyName != null)
                     {
                         var symbolId = SymbolIdService.GetId("T:" + taskName);
-                        projectGenerator.AddReference(
+                        projectGenerator.AddLegacyReferenceForMSBuild(
                             destinationHtmlFilePath,
                             range.LineText,
                             range.Column,

@@ -16,6 +16,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         public string SolutionSourceFolder { get; private set; }
         public string SolutionDestinationFolder { get; private set; }
         public string ProjectFilePath { get; private set; }
+
+        public IO.SolutionManager IOManager { get; private set; }
         public string ServerPath { get; set; }
         public string NetworkShare { get; private set; }
         private Federation Federation { get; set; }
@@ -39,6 +41,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             this.SolutionSourceFolder = Path.GetDirectoryName(solutionFilePath);
             this.SolutionDestinationFolder = solutionDestinationFolder;
+            IOManager = new IO.SolutionManager(SolutionDestinationFolder);
             this.ProjectFilePath = solutionFilePath;
             this.ServerPath = serverPath;
             this.solution = CreateSolution(solutionFilePath, properties);
@@ -79,6 +82,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 LanguageNames.VisualBasic : LanguageNames.CSharp;
             this.SolutionSourceFolder = solutionSourceFolder;
             this.SolutionDestinationFolder = solutionDestinationFolder;
+            IOManager = new IO.SolutionManager(SolutionDestinationFolder);
             this.ServerPath = serverPath;
             this.NetworkShare = networkShare;
             string projectSourceFolder = Path.GetDirectoryName(projectFilePath);

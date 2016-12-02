@@ -176,7 +176,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 Write(writer, "</body></html>");
             }
 
-            File.Delete(rawReferencesFile);
+            //File.Delete(rawReferencesFile);
         }
 
         private void WriteImplementedInterfaceMembers(ulong symbolId, StreamWriter writer)

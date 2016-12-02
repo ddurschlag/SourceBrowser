@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using CS = Microsoft.CodeAnalysis.CSharp;
@@ -37,7 +36,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             if (IsZeroLengthArrayAllocation(token))
             {
                 projectGenerator.AddReference(
-                    this.documentDestinationFilePath,
+                    documentDestination,
                     Text,
                     "mscorlib",
                     null,
@@ -260,9 +259,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             {
                 string symbolId = SymbolIdService.GetId(symbol);
 
-                string partialFilePath = Path.Combine(ProjectDestinationFolder, Constants.PartialResolvingFileName, symbolId + ".html");
-                string href = Paths.MakeRelativeToFile(partialFilePath, documentDestinationFilePath);
-                href = href.Replace('\\', '/');
+                string href = IOManager.GetRelativePartialFileHref(symbolId + ".html", documentDestination);
 
                 var result = new HtmlElementInfo()
                 {
@@ -312,12 +309,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             var symbolId = guid.ToString();
 
-            var referencesFilePath = Path.Combine(
-                SolutionDestinationFolder,
-                Constants.GuidAssembly,
-                Constants.ReferencesFileName,
-                symbolId + ".html");
-            string href = Paths.MakeRelativeToFile(referencesFilePath, documentDestinationFilePath);
+            string href = IOManager.GetSolutionRelativeReferenceHref(symbolId + ".html", documentDestination);
             href = href.Replace('\\', '/');
 
             var link = new HtmlElementInfo
@@ -332,7 +324,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             };
 
             projectGenerator.AddReference(
-                this.documentDestinationFilePath,
+                documentDestination,
                 Text,
                 Constants.GuidAssembly,
                 null,

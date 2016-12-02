@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
 
@@ -79,9 +78,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             federations.Add(new Info(server, assemblyNames));
         }
 
-        public void AddFederation(string server, string assemblyListFile)
+        public void AddFederation(string server, string fileText)
         {
-            var fileText = File.ReadAllText(assemblyListFile);
             var assemblyNames = GetAssemblyNames(fileText);
             var info = new Info(server, assemblyNames);
             federations.Add(info);

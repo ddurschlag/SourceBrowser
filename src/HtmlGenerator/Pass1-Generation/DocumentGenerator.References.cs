@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -214,7 +212,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             reportedDiagnostics = true;
 
             string message =
-                this.documentDestinationFilePath + "\r\n" +
+                this.documentDestination + "\r\n" +
                 token.ToString() + ", " + token.Span.Start + "\r\n" +
                 (classifiedSpan.ClassificationType ?? "null classification type") + "\r\n" +
                 symbolDisplayString;
@@ -374,7 +372,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     // only register a reference to the symbol if it's not a symbol from an external assembly.
                     // if this links to a symbol in a different index, link target contain @.
                     projectGenerator.AddReference(
-                        this.documentDestinationFilePath,
+                        documentDestination,
                         Text,
                         destinationAssemblyName,
                         symbol,
@@ -492,32 +490,18 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
             else // it's in the same assembly, we can just use the direct path without redirects
             {
-                string referencedSymbolDestinationFilePath = null;
                 if (symbol.Locations.Length > 1)
                 {
-                    referencedSymbolDestinationFilePath = Path.Combine(
-                        SolutionDestinationFolder,
-                        SymbolIdService.GetAssemblyId(symbol.ContainingAssembly),
-                        Constants.PartialResolvingFileName,
-                        symbolId);
+                    href = IOManager.GetUrlFromDestinationToSymbol(documentDestination, symbolId);
                 }
                 else
                 {
-                    var referenceRelativeFilePath = Paths.GetRelativePathInProject(syntaxTree, Document.Project);
-                    referencedSymbolDestinationFilePath = Path.Combine(projectGenerator.ProjectDestinationFolder, referenceRelativeFilePath);
+                    href = IOManager.GetUrlFromDestinationToRelativePath(
+                        documentDestination,
+                        symbolId,
+                        Paths.GetRelativePathInProject(syntaxTree, Document.Project)
+                    );
                 }
-
-                href = Paths.MakeRelativeToFile(referencedSymbolDestinationFilePath, documentDestinationFilePath) + ".html";
-                if (referencedSymbolDestinationFilePath + ".html" == documentDestinationFilePath)
-                {
-                    href = "";
-                }
-                else
-                {
-                    href = href.Replace('\\', '/');
-                }
-
-                href = href + "#" + symbolId;
             }
 
             return new HtmlElementInfo
@@ -638,10 +622,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             return "/" + assemblyName + "/" + Constants.IDResolvingFileName + ".html#" + symbolId;
         }
 
-        private string ProjectDestinationFolder
-        {
-            get { return projectGenerator.ProjectDestinationFolder; }
-        }
+        private IO.ProjectManager IOManager { get { return projectGenerator.IOManager; } }
 
         private string SolutionDestinationFolder
         {
