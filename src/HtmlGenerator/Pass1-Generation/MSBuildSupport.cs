@@ -1,5 +1,5 @@
 ﻿using System;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Text;
 using Microsoft.Build.Evaluation;
@@ -34,12 +34,10 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             url = Constants.MSBuildFiles + @"\" + url;
 
-            var htmlFilePath = Path.Combine(SolutionDestinationFolder, url);
-
-            if (!File.Exists(htmlFilePath))
+            if (!SolutionGenerator.IOManager.UrlExists(url))
             {
                 var msbuildSupport = new MSBuildSupport(this.projectGenerator);
-                msbuildSupport.Generate(localFileSystemPath, htmlFilePath, project, false);
+                msbuildSupport.Generate(localFileSystemPath, Path.Combine(SolutionDestinationFolder, url), project, false);
             }
 
             url = "/" + url.Replace('\\', '/');

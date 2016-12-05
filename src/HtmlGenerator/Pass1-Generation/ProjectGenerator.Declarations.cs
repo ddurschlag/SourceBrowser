@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -100,24 +100,13 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             Serialization.WriteDeclaredSymbols(ProjectDestinationFolder, lines, overwrite);
         }
 
-        public static void GenerateSymbolIDToListOfDeclarationLocationsMap(
-            string projectDestinationFolder,
+        public void GenerateSymbolIDToListOfDeclarationLocationsMap(
             SymbolIndex symbolIDToListOfLocationsMap,
             bool overwrite = false)
         {
             Log.Write("Symbol ID to list of locations map...");
-            var fileName = Path.Combine(projectDestinationFolder, Constants.DeclarationMap + ".txt");
-            using (var writer = new StreamWriter(fileName, append: !overwrite, encoding: Encoding.UTF8))
-            {
-                foreach (var kvp in symbolIDToListOfLocationsMap)
-                {
-                    writer.WriteLine("=" + kvp.Item1);
-                    foreach (var location in kvp.Item2)
-                    {
-                        SymbolLocation.Write(writer, location);
-                    }
-                }
-            }
+
+            IOManager.WriteDeclarationsMap(symbolIDToListOfLocationsMap, overwrite);
         }
 
         public void AddBaseMember(ISymbol member, ISymbol baseMember)
@@ -132,11 +121,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             Log.Write("Base members...");
 
-            var assemblyReferencesDataFolder = Path.Combine(
-                    this.SolutionGenerator.SolutionDestinationFolder,
-                    this.AssemblyName,
-                    Constants.ReferencesFileName);
-            Directory.CreateDirectory(assemblyReferencesDataFolder);
+            IOManager.CreateReferencesDirectory();
 
             lock (this.BaseMembers)
             {
@@ -153,12 +138,10 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     // just make sure the references file for this symbol exists, so that even if symbols
                     // that aren't referenced anywhere get a reference file with a base member link if there
                     // is a base member for the symbol
-                    var referencesFile = Path.Combine(assemblyReferencesDataFolder, fromMemberId + ".txt");
-                    File.AppendAllText(referencesFile, "");
+                    IOManager.EnsureReferencesFile(fromMemberId);
                 }
 
-                var fileName = Path.Combine(ProjectDestinationFolder, Constants.BaseMembersFileName + ".txt");
-                File.WriteAllLines(fileName, lines);
+                IOManager.WriteBaseMembers(lines);
             }
         }
 
@@ -184,11 +167,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             Log.Write("Implemented interface members...");
 
-            var assemblyReferencesDataFolder = Path.Combine(
-                    this.SolutionGenerator.SolutionDestinationFolder,
-                    this.AssemblyName,
-                    Constants.ReferencesFileName);
-            Directory.CreateDirectory(assemblyReferencesDataFolder);
+            IOManager.CreateReferencesDirectory();
 
             lock (this.ImplementedInterfaceMembers)
             {
@@ -209,12 +188,10 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     // just make sure the references file for this symbol exists, so that even if symbols
                     // that aren't referenced anywhere get a reference file with a base member link if there
                     // is a base member for the symbol
-                    var referencesFile = Path.Combine(assemblyReferencesDataFolder, fromMemberId + ".txt");
-                    File.AppendAllText(referencesFile, "");
+                    IOManager.EnsureReferencesFile(fromMemberId);
                 }
 
-                var fileName = Path.Combine(ProjectDestinationFolder, Constants.ImplementedInterfaceMembersFileName + ".txt");
-                File.WriteAllLines(fileName, lines);
+                IOManager.WriteImplementedInterfaceMembers(lines);
             }
         }
     }

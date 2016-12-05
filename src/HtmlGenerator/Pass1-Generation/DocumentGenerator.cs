@@ -76,7 +76,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 documentRelativeFilePathWithoutHtmlExtension,
                 0);
 
-            if (IOManager.DestinationExists(documentDestination))
+            if (IOManager.HtmlDestinationExists(documentDestination))
             {
                 // someone already generated this file, likely a shared linked file from elsewhere
                 return;
@@ -96,7 +96,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 return;
             }
 
-            using (var streamWriter = IOManager.GetWriter(documentDestination))
+            using (var streamWriter = IOManager.GetHtmlWriter(documentDestination))
             {
                 await GenerateHtml(streamWriter);
             }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -46,12 +46,11 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         /// <summary>
         /// This constructor is used for non-C#/VB projects such as "MSBuildFiles"
         /// </summary>
-        public ProjectGenerator(string folderName, string solutionDestinationFolder) : this()
+        public ProjectGenerator(string folderName, IO.SolutionManager ioManager) : this()
         {
-            ProjectDestinationFolder = Path.Combine(solutionDestinationFolder, folderName);
             //TODO: is this needed? Should this constructor actually be a different implementation of the same interface?
-            //IOManager = new IO.ProjectManager(ProjectDestinationFolder);
-            Directory.CreateDirectory(Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName));
+            IOManager = ioManager.GetProjectManager(folderName);
+            IOManager.CreateReferencesDirectory();
         }
 
         private static HashSet<string> RedirectFileNames = new HashSet<string>
@@ -76,9 +75,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         private void AddHtmlFilesToRedirectMap()
         {
-            var files = Directory
-                            .GetFiles(ProjectDestinationFolder, "*.html", SearchOption.AllDirectories);
-            foreach (var file in files)
+            foreach (var file in IOManager.GetHtmlOutputFiles())
             {
                 var relativePath = file.Substring(ProjectDestinationFolder.Length + 1).Replace('\\', '/');
                 relativePath = relativePath.Substring(0, relativePath.Length - 5); // strip .html
@@ -131,7 +128,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
                 ProjectSourcePath = Paths.MakeRelativeToFolder(ProjectFilePath, SolutionGenerator.SolutionSourceFolder);
 
-                if (File.Exists(Path.Combine(ProjectDestinationFolder, Constants.DeclaredSymbolsFileName + ".txt")))
+                if (IOManager.DestinationExists(new IO.Destination(new string[0], Constants.DeclaredSymbolsFileName + ".txt")))
                 {
                     // apparently someone already generated a project with this assembly name - their assembly wins
                     Log.Exception(string.Format(
@@ -143,7 +140,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
                 if (Configuration.CreateFoldersOnDisk)
                 {
-                    Directory.CreateDirectory(ProjectDestinationFolder);
+                    IOManager.CreateDirectory();
                 }
 
                 var documents = Project.Documents.Where(IncludeDocument).ToList();
@@ -179,9 +176,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     GenerateReferencesDataFiles(
                         this.SolutionGenerator.SolutionDestinationFolder,
                         ReferencesByTargetAssemblyAndSymbolId);
-                    GenerateSymbolIDToListOfDeclarationLocationsMap(
-                        ProjectDestinationFolder,
-                        SymbolIDToListOfLocationsMap);
+                    GenerateSymbolIDToListOfDeclarationLocationsMap(SymbolIDToListOfLocationsMap);
                     GenerateReferencedAssemblyList();
                     GenerateUsedReferencedAssemblyList();
                     GenerateProjectExplorer();
@@ -200,7 +195,6 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             AddHtmlFilesToRedirectMap();
             GenerateDeclarations(true);
             GenerateSymbolIDToListOfDeclarationLocationsMap(
-                ProjectDestinationFolder,
                 SymbolIDToListOfLocationsMap,
                 true);
         }
@@ -230,10 +224,9 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         private void GenerateIndex()
         {
             Log.Write("Index.html...");
-            var index = Path.Combine(ProjectDestinationFolder, "index.html");
             var sb = new StringBuilder();
             Markup.WriteProjectIndex(sb, Project.AssemblyName);
-            File.WriteAllText(index, sb.ToString());
+            IOManager.Write("index.html", sb.ToString());
         }
 
         private bool IsCSharp
@@ -253,7 +246,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             return true;
         }
-        
+
         private bool TrySetAssemblyName(Project project)
         {
             var assemblyName = project.AssemblyName;

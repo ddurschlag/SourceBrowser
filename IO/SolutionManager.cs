@@ -30,6 +30,11 @@ namespace Microsoft.SourceBrowser.IO
 
         public string SolutionDestinationFolder { get; private set; }
 
+        public bool UrlExists(string url)
+        {
+            return File.Exists(Path.Combine(SolutionDestinationFolder, url));
+        }
+
         //TODO: Should this return a destination?
         public string GetReferencedSymbolDestinationFilePath(string assemblyId, string symbolId)
         {

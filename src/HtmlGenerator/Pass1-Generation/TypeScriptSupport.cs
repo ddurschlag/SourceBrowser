@@ -73,9 +73,9 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 projectDestinationFolder,
                 declarations);
 
-            ProjectGenerator.GenerateSymbolIDToListOfDeclarationLocationsMap(
-                projectDestinationFolder,
-                SymbolIDToListOfLocationsMap);
+            new IO.SolutionManager(solutionDestinationFolder)
+                .GetProjectManager(Constants.TypeScriptFiles)
+                .WriteDeclarationsMap(SymbolIDToListOfLocationsMap);
         }
 
         private void GenerateCore(IEnumerable<string> fileNames, string libFile)

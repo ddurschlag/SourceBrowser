@@ -21,21 +21,46 @@ namespace Microsoft.SourceBrowser.IO
         public SolutionManager Parent { get; private set; }
         public string AssemblyId { get; private set; }
 
+        public bool HtmlDestinationExists(Destination d)
+        {
+            return File.Exists(GetHtmlDestinationPath(d));
+        }
+
         public bool DestinationExists(Destination d)
         {
             return File.Exists(GetDestinationPath(d));
         }
 
-        public void CreateDirectory(Destination d)
+        public void CreateDirectory()
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(GetDestinationPath(d)));
+            Directory.CreateDirectory(ProjectDestinationFolder);
         }
 
-        public StreamWriter GetWriter(Destination d)
+        public void CreateDirectory(Destination d)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(GetHtmlDestinationPath(d)));
+        }
+
+        public void CreateReferencesDirectory()
+        {
+            Directory.CreateDirectory(Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName));
+        }
+
+        public IEnumerable<string> GetHtmlOutputFiles()
+        {
+            return Directory.GetFiles(ProjectDestinationFolder, "*.html", SearchOption.AllDirectories);
+        }
+
+        public void Write(string file, string contents)
+        {
+            File.WriteAllText(Path.Combine(ProjectDestinationFolder, file), contents);
+        }
+
+        public StreamWriter GetHtmlWriter(Destination d)
         {
             if (WriteDocumentsToDisk)
                 return new StreamWriter(
-                    GetDestinationPath(d),
+                    GetHtmlDestinationPath(d),
                     append: false,
                     encoding: Encoding.UTF8
                 );
@@ -53,7 +78,7 @@ namespace Microsoft.SourceBrowser.IO
 
         public string GetUrlFromDestinationToPath(Destination d, string symbolId, string path)
         {
-            var destinationPath = GetDestinationPath(d);
+            var destinationPath = GetHtmlDestinationPath(d);
             string href;
 
             if (path + ".html" == destinationPath)
@@ -79,7 +104,7 @@ namespace Microsoft.SourceBrowser.IO
 
         public string GetPathToSolutionRoot(Destination d)
         {
-            var relativePath = GetDestinationPath(d).Substring(Parent.SolutionDestinationFolder.Length + 1);
+            var relativePath = GetHtmlDestinationPath(d).Substring(Parent.SolutionDestinationFolder.Length + 1);
             var depth = relativePath.Count(c => c == '\\' || c == '/');
 
             var sb = new StringBuilder(3 * depth);
@@ -95,15 +120,13 @@ namespace Microsoft.SourceBrowser.IO
             return Parent.GetReferencesRelativeHref(filename, d, this);
         }
 
-
-
         [Obsolete("Retire in favor of using destinations")]
         public string GetLegacyDocumentDestinationPath(Destination d)
         {
-            return GetDestinationPath(d);
+            return GetHtmlDestinationPath(d);
         }
 
-        private string GetDestinationPath(Destination d)
+        private string GetHtmlDestinationPath(Destination d)
         {
             return Path.GetFullPath(Path.Combine(
                 new string[] { ProjectDestinationFolder }
@@ -111,6 +134,15 @@ namespace Microsoft.SourceBrowser.IO
                 .Concat(new string[] { d.FileName })
                 .ToArray()
             ) + ".html");
+        }
+
+        private string GetDestinationPath(Destination d)
+        {
+            return Path.GetFullPath(Path.Combine(
+                new string[] { ProjectDestinationFolder }
+                .Concat(d.Folders)
+                .Concat(new string[] { d.FileName }).ToArray()
+            ));
         }
 
         public string GetRelativeReferenceHref(string filename, Destination d)
@@ -127,7 +159,7 @@ namespace Microsoft.SourceBrowser.IO
         {
             return MakeRelativeToFile(
                 Path.Combine(new string[] { ProjectDestinationFolder }.Concat(subdir).Concat(new string[] { filename }).ToArray()),
-                GetDestinationPath(d)
+                GetHtmlDestinationPath(d)
             ).Replace('\\', '/');
         }
 
@@ -136,5 +168,37 @@ namespace Microsoft.SourceBrowser.IO
             return Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName, filename);
         }
 
+        public void EnsureReferencesFile(string name)
+        {
+            File.AppendAllText(Path.Combine(ProjectDestinationFolder, name + ".txt"), string.Empty);
+        }
+
+        public void WriteBaseMembers(IEnumerable<string> baseMemberLines)
+        {
+            var fileName = Path.Combine(ProjectDestinationFolder, Constants.BaseMembersFileName + ".txt");
+            File.WriteAllLines(fileName, baseMemberLines);
+        }
+
+        public void WriteImplementedInterfaceMembers(IEnumerable<string> implementedInterfaceMemberLines)
+        {
+            var fileName = Path.Combine(ProjectDestinationFolder, Constants.ImplementedInterfaceMembersFileName + ".txt");
+            File.WriteAllLines(fileName, implementedInterfaceMemberLines);
+        }
+
+        public void WriteDeclarationsMap(Common.SymbolIndex si, bool overwrite = false)
+        {
+            var fileName = Path.Combine(ProjectDestinationFolder, Constants.DeclarationMap + ".txt");
+            using (var writer = new StreamWriter(fileName, append: !overwrite, encoding: Encoding.UTF8))
+            {
+                foreach (var kvp in si)
+                {
+                    writer.WriteLine("=" + kvp.Item1);
+                    foreach (var location in kvp.Item2)
+                    {
+                        Common.SymbolLocation.Write(writer, location);
+                    }
+                }
+            }
+        }
     }
 }
