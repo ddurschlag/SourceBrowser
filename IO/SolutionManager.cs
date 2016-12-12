@@ -31,6 +31,7 @@ namespace Microsoft.SourceBrowser.IO
             if (!_ProjectManagers.TryGetValue(assemblyId, out result))
             {
                 result = new ProjectManager(this, GetProjectDestinationPath(assemblyId), assemblyId, WriteDocumentsToDisk, Parallelism);
+                _ProjectManagers.Add(assemblyId, result);
             }
             return result;
         }

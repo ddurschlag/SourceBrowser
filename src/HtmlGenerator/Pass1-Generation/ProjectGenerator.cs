@@ -77,7 +77,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             foreach (var file in IOManager.GetHtmlOutputFiles())
             {
-                var relativePath = file.Substring(ProjectDestinationFolder.Length + 1).Replace('\\', '/');
+            //todo: Pull into ProjectManager
+                var relativePath = file.Substring(IOManager.ProjectDestinationFolder.Length + 1).Replace('\\', '/');
                 relativePath = relativePath.Substring(0, relativePath.Length - 5); // strip .html
                 if (!RedirectFileNames.Contains(relativePath))
                 {

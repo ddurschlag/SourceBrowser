@@ -239,7 +239,7 @@ namespace Microsoft.SourceBrowser.IO
         {
             int zeroIdLength = zeroId.Length;
 
-            using (var stream = new FileStream(GetDestinationPath(d), FileMode.Open, FileAccess.ReadWrite))
+            using (var stream = new FileStream(GetHtmlDestinationPath(d), FileMode.Open, FileAccess.ReadWrite))
             {
                 foreach (var offset in offsets)
                 {

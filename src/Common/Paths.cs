@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
-using System.IO;
+using Path = System.IO.Path;
 
 namespace Microsoft.SourceBrowser.Common
 {

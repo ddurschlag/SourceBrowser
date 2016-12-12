@@ -205,7 +205,8 @@ namespace Microsoft.SourceBrowser.SourceIndexServer.Models
             using (Measure.Time("Read huffman tables"))
             {
                 var huffmanFile = Path.Combine(rootPath, "Huffman.txt");
-                huffman = Huffman.Read(huffmanFile);
+                using (var hr = new IO.HuffmanReader(File.OpenRead(huffmanFile)))
+                    huffman = hr.Read();
             }
 
             using (Measure.Time("Read binary file"))

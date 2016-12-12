@@ -170,6 +170,7 @@ namespace Microsoft.SourceBrowser.IO
         {
             var files = new[]
             {
+                "Microsoft.SourceBrowser.IO.dll",
                 "Microsoft.SourceBrowser.Common.dll",
                 "Microsoft.SourceBrowser.SourceIndexServer.dll",
                 "Microsoft.Web.Infrastructure.dll",
