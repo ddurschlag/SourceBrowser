@@ -1,5 +1,5 @@
 ﻿using System;
-using System.IO;
+using Path = System.IO.Path;
 using Microsoft.CodeAnalysis;
 using Microsoft.SourceBrowser.Common;
 using Folder = Microsoft.SourceBrowser.HtmlGenerator.Folder<Microsoft.CodeAnalysis.Project>;
@@ -17,7 +17,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             Sort(root);
 
-            using (var writer = new StreamWriter(Path.Combine(SolutionDestinationFolder, Constants.SolutionExplorer + ".html")))
+            using (var writer = IOManager.GetSolutionExplorerWriter())
             {
                 Log.Write("Solution Explorer...");
                 Markup.WriteSolutionExplorerPrefix(writer);
@@ -43,7 +43,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
         }
 
-        private void WriteFolder(Folder folder, StreamWriter writer)
+        private void WriteFolder(Folder folder, System.IO.StreamWriter writer)
         {
             if (folder.Folders != null)
             {
@@ -64,24 +64,18 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
         }
 
-        private void WriteProject(string assemblyName, StreamWriter writer)
+        private void WriteProject(string assemblyName, System.IO.StreamWriter writer)
         {
-            var projectExplorerText = GetProjectExplorerText(assemblyName);
+            var text = string.Join(Environment.NewLine, IOManager.GetProjectManager(assemblyName).ReadProjectExplorer());
+            var projectExplorerText = GetProjectExplorerText(text, assemblyName);
             if (!string.IsNullOrEmpty(projectExplorerText))
             {
                 writer.WriteLine(projectExplorerText);
             }
         }
 
-        private string GetProjectExplorerText(string assemblyName)
+        private string GetProjectExplorerText(string text, string assemblyName)
         {
-            var fileName = Path.Combine(SolutionDestinationFolder, assemblyName, Constants.ProjectExplorer + ".html");
-            if (!File.Exists(fileName))
-            {
-                return null;
-            }
-
-            var text = File.ReadAllText(fileName);
             var startText = "<div id=\"rootFolder\"";
             var start = text.IndexOf(startText) + startText.Length;
             var end = text.IndexOf("<script>");

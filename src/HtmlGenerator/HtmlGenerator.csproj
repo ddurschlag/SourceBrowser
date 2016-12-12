@@ -162,7 +162,6 @@
     <Compile Include="Pass1-Generation\MSBuildSupport.cs" />
     <Compile Include="Pass1-Generation\ProjectGenerator.cs" />
     <Compile Include="Pass1-Generation\ProjectGenerator.Declarations.cs" />
-    <Compile Include="Pass1-Generation\ProjectGenerator.MetadataToSourceRedirect.cs" />
     <Compile Include="Pass1-Generation\ProjectGenerator.ProjectExplorer.cs" />
     <Compile Include="Pass1-Generation\ProjectGenerator.ProjectFile.cs" />
     <Compile Include="Pass1-Generation\ProjectGenerator.ProjectInfo.cs" />
@@ -183,9 +182,11 @@
     <Compile Include="Pass2-Finalization\SolutionFinalizer.cs" />
     <Compile Include="Pass2-Finalization\SolutionFinalizer.SolutionExplorer.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="RedirectFile.cs" />
     <Compile Include="SolutionInfo.cs" />
     <Compile Include="Utilities\Constants.cs" />
     <Compile Include="Utilities\DeclaredSymbolInfo.cs" />
+    <Compile Include="Utilities\DeclaredSymbolInfoFactory.cs" />
     <Compile Include="Utilities\FirstChanceExceptionHandler.cs" />
     <Compile Include="Utilities\Folder`1.cs" />
     <Compile Include="Utilities\Glyph.cs" />
@@ -195,11 +196,9 @@
     <Compile Include="Utilities\MSBuildExpressionParser.cs" />
     <Compile Include="Utilities\Paths.cs" />
     <Compile Include="Utilities\PluginLogger.cs" />
-    <Compile Include="Utilities\Reference.cs" />
     <Compile Include="Utilities\Serialization.cs" />
     <Compile Include="Utilities\SymbolIdService.cs" />
     <Compile Include="Utilities\SymbolKindText.cs" />
-    <Compile Include="Utilities\SymbolSorter.cs" />
     <Compile Include="Utilities\WorkspaceHacks.cs" />
     <Compile Include="Utilities\XmlDocumentationProvider.cs" />
   </ItemGroup>

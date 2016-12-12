@@ -1,17 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using Microsoft.SourceBrowser.Common;
+using Microsoft.SourceBrowser.Common.Entity;
 
 namespace Microsoft.SourceBrowser.HtmlGenerator
 {
     public partial class ProjectFinalizer
     {
-        public string ProjectDestinationFolder { get; private set; }
-
         private string projectSourcePath;
-        private string referencesFolder;
         public SolutionFinalizer SolutionFinalizer;
 
         public string AssemblyId { get; private set; }
@@ -20,6 +18,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         public Dictionary<ulong, DeclaredSymbolInfo> DeclaredSymbols { get; set; }
         public Dictionary<ulong, Tuple<string, ulong>> BaseMembers { get; set; }
         public MultiDictionary<ulong, Tuple<string, ulong>> ImplementedInterfaceMembers { get; set; }
+        public IO.ProjectManager IOManager;
 
         public long DocumentCount { get; set; }
         public long LinesOfCode { get; set; }
@@ -28,15 +27,14 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         public long DeclaredTypeCount { get; set; }
         public long PublicTypeCount { get; set; }
 
-        public ProjectFinalizer(SolutionFinalizer solutionFinalizer, string directory)
+        public ProjectFinalizer(SolutionFinalizer solutionFinalizer, IO.ProjectManager ioManager)
         {
             this.BaseMembers = new Dictionary<ulong, Tuple<string, ulong>>();
             this.ImplementedInterfaceMembers = new MultiDictionary<ulong, Tuple<string, ulong>>();
             this.SolutionFinalizer = solutionFinalizer;
+            IOManager = ioManager;
             ReferencingAssemblies = new List<string>();
-            this.ProjectDestinationFolder = directory;
-            this.referencesFolder = Path.Combine(directory, Constants.ReferencesFileName);
-            this.AssemblyId = string.Intern(Path.GetFileName(directory));
+            this.AssemblyId = IOManager.AssemblyId;
             ReadProjectInfo();
             ReadDeclarationLines();
             ReadBaseMembers();
@@ -51,16 +49,9 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         public void ReadDeclarationLines()
         {
             DeclaredSymbols = new Dictionary<ulong, DeclaredSymbolInfo>();
-            var assemblyIndex = Path.Combine(ProjectDestinationFolder, Constants.DeclaredSymbolsFileName + ".txt");
-            if (!File.Exists(assemblyIndex))
+            foreach (var declarationLine in IOManager.GetDeclaredSymbolLines())
             {
-                return;
-            }
-
-            var declarationLines = File.ReadAllLines(assemblyIndex);
-            foreach (var declarationLine in declarationLines)
-            {
-                var symbolInfo = new DeclaredSymbolInfo(declarationLine);
+                var symbolInfo = new Utilities.DeclaredSymbolInfoFactory().Manufacture(declarationLine);
                 symbolInfo.AssemblyName = this.AssemblyId;
                 if (symbolInfo.IsValid)
                 {
@@ -79,48 +70,33 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         private void ReadBaseMembers()
         {
-            var baseMembersFile = Path.Combine(ProjectDestinationFolder, Constants.BaseMembersFileName + ".txt");
-            if (!File.Exists(baseMembersFile))
-            {
-                return;
-            }
-
-            var lines = File.ReadAllLines(baseMembersFile);
-            foreach (var line in lines)
+            foreach (var line in IOManager.GetBaseMemberLines())
             {
                 var parts = line.Split(';');
-                var derivedId = Serialization.HexStringToULong(parts[0]);
+                var derivedId = TextUtilities.HexStringToULong(parts[0]);
                 var baseAssemblyName = string.Intern(parts[1]);
-                var baseId = Serialization.HexStringToULong(parts[2]);
+                var baseId = TextUtilities.HexStringToULong(parts[2]);
                 BaseMembers[derivedId] = Tuple.Create(baseAssemblyName, baseId);
             }
         }
 
         private void ReadImplementedInterfaceMembers()
         {
-            var implementedInterfaceMembersFile = Path.Combine(ProjectDestinationFolder, Constants.ImplementedInterfaceMembersFileName + ".txt");
-            if (!File.Exists(implementedInterfaceMembersFile))
-            {
-                return;
-            }
-
-            var lines = File.ReadAllLines(implementedInterfaceMembersFile);
-            foreach (var line in lines)
+            foreach (var line in IOManager.GetImplementedInterfaceMemberLines())
             {
                 var parts = line.Split(';');
-                var implementationId = Serialization.HexStringToULong(parts[0]);
+                var implementationId = TextUtilities.HexStringToULong(parts[0]);
                 var interfaceAssemblyName = string.Intern(parts[1]);
-                var interfaceMemberId = Serialization.HexStringToULong(parts[2]);
+                var interfaceMemberId = TextUtilities.HexStringToULong(parts[2]);
                 ImplementedInterfaceMembers.Add(implementationId, Tuple.Create(interfaceAssemblyName, interfaceMemberId));
             }
         }
 
         private void ReadProjectInfo()
         {
-            var projectInfoFile = Path.Combine(ProjectDestinationFolder, Constants.ProjectInfoFileName + ".txt");
-            if (File.Exists(projectInfoFile))
+            var lines = IOManager.GetProjectInfoLines();
+            if (lines.Any())
             {
-                var lines = File.ReadAllLines(projectInfoFile);
                 projectSourcePath = Serialization.ReadValue(lines, "ProjectSourcePath");
                 DocumentCount = Serialization.ReadLong(lines, "DocumentCount");
                 LinesOfCode = Serialization.ReadLong(lines, "LinesOfCode");
@@ -130,10 +106,10 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 PublicTypeCount = Serialization.ReadLong(lines, "PublicTypes");
             }
 
-            var referenceList = Path.Combine(ProjectDestinationFolder, Constants.ReferencedAssemblyList + ".txt");
-            if (File.Exists(referenceList))
+            lines = IOManager.GetReferencedAssemblyLines();
+            if (lines.Any())
             {
-                ReferencedAssemblies = File.ReadAllLines(referenceList).Select(s => string.Intern(s)).ToArray();
+                ReferencedAssemblies = lines.Select(string.Intern).ToArray();
             }
         }
     }

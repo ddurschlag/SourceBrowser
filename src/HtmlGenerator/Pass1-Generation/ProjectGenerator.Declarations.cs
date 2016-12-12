@@ -96,8 +96,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                         Serialization.GetIconForExtension(document)));
                 }
             }
-
-            Serialization.WriteDeclaredSymbols(ProjectDestinationFolder, lines, overwrite);
+            IOManager.WriteDeclaredSymbols(lines, overwrite);
         }
 
         public void GenerateSymbolIDToListOfDeclarationLocationsMap(

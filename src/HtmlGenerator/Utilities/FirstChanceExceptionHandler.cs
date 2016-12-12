@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using Path = System.IO.Path;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Xml;
@@ -63,7 +63,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     return;
                 }
 
-                if (ex is DirectoryNotFoundException)
+                if (ex is System.IO.DirectoryNotFoundException)
                 {
                     return;
                 }
@@ -73,7 +73,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     return;
                 }
 
-                if (ex is FileNotFoundException)
+                if (ex is System.IO.FileNotFoundException)
                 {
                     return;
                 }

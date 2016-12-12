@@ -41,11 +41,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Constants.cs" />
+    <Compile Include="DeclaredSymbolInfoWriter.cs" />
     <Compile Include="Destination.cs" />
+    <Compile Include="HuffmanReader.cs" />
+    <Compile Include="HuffmanWriter.cs" />
     <Compile Include="IOManager.cs" />
     <Compile Include="ProjectManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ReferenceReader.cs" />
+    <Compile Include="ReferenceWriter.cs" />
     <Compile Include="SolutionManager.cs" />
+    <Compile Include="SymbolReferencesThingy.cs" />
+    <Compile Include="Utility.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\src\Common\Common.csproj">

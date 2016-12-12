@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -35,13 +35,14 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         public SolutionGenerator(
             string solutionFilePath,
             string solutionDestinationFolder,
+            IO.SolutionManager ioManager,
             string serverPath = null,
             ImmutableDictionary<string, string> properties = null,
             Federation federation = null)
         {
             this.SolutionSourceFolder = Path.GetDirectoryName(solutionFilePath);
             this.SolutionDestinationFolder = solutionDestinationFolder;
-            IOManager = new IO.SolutionManager(SolutionDestinationFolder);
+            IOManager = ioManager;
             this.ProjectFilePath = solutionFilePath;
             this.ServerPath = serverPath;
             this.solution = CreateSolution(solutionFilePath, properties);
@@ -67,34 +68,34 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             PluginAggregator = new MEF.PluginAggregator(configs, new Utilities.PluginLogger());
         }
 
-        public SolutionGenerator(
-            string projectFilePath,
-            string commandLineArguments,
-            string outputAssemblyPath,
-            string solutionSourceFolder,
-            string solutionDestinationFolder,
-            string serverPath,
-            string networkShare)
-        {
-            this.ProjectFilePath = projectFilePath;
-            string projectName = Path.GetFileNameWithoutExtension(projectFilePath);
-            string language = projectFilePath.EndsWith(".vbproj", StringComparison.OrdinalIgnoreCase) ?
-                LanguageNames.VisualBasic : LanguageNames.CSharp;
-            this.SolutionSourceFolder = solutionSourceFolder;
-            this.SolutionDestinationFolder = solutionDestinationFolder;
-            IOManager = new IO.SolutionManager(SolutionDestinationFolder);
-            this.ServerPath = serverPath;
-            this.NetworkShare = networkShare;
-            string projectSourceFolder = Path.GetDirectoryName(projectFilePath);
-            SetupPluginAggregator();
+        //public SolutionGenerator(
+        //    string projectFilePath,
+        //    string commandLineArguments,
+        //    string outputAssemblyPath,
+        //    string solutionSourceFolder,
+        //    string solutionDestinationFolder,
+        //    string serverPath,
+        //    string networkShare)
+        //{
+        //    this.ProjectFilePath = projectFilePath;
+        //    string projectName = Path.GetFileNameWithoutExtension(projectFilePath);
+        //    string language = projectFilePath.EndsWith(".vbproj", StringComparison.OrdinalIgnoreCase) ?
+        //        LanguageNames.VisualBasic : LanguageNames.CSharp;
+        //    this.SolutionSourceFolder = solutionSourceFolder;
+        //    this.SolutionDestinationFolder = solutionDestinationFolder;
+        //    IOManager = new IO.SolutionManager(SolutionDestinationFolder);
+        //    this.ServerPath = serverPath;
+        //    this.NetworkShare = networkShare;
+        //    string projectSourceFolder = Path.GetDirectoryName(projectFilePath);
+        //    SetupPluginAggregator();
 
-            this.solution = CreateSolution(
-                commandLineArguments,
-                projectName,
-                language,
-                projectSourceFolder,
-                outputAssemblyPath);
-        }
+        //    this.solution = CreateSolution(
+        //        commandLineArguments,
+        //        projectName,
+        //        language,
+        //        projectSourceFolder,
+        //        outputAssemblyPath);
+        //}
 
         public IEnumerable<string> GetAssemblyNames()
         {
@@ -122,30 +123,30 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             return w;
         }
 
-        private static Solution CreateSolution(
-            string commandLineArguments,
-            string projectName,
-            string language,
-            string projectSourceFolder,
-            string outputAssemblyPath)
-        {
-            var workspace = CreateWorkspace();
-            var projectInfo = CommandLineProject.CreateProjectInfo(
-                projectName,
-                language,
-                commandLineArguments,
-                projectSourceFolder,
-                workspace);
-            var solution = workspace.CurrentSolution.AddProject(projectInfo);
+        //private static Solution CreateSolution(
+        //    string commandLineArguments,
+        //    string projectName,
+        //    string language,
+        //    string projectSourceFolder,
+        //    string outputAssemblyPath)
+        //{
+        //    var workspace = CreateWorkspace();
+        //    var projectInfo = CommandLineProject.CreateProjectInfo(
+        //        projectName,
+        //        language,
+        //        commandLineArguments,
+        //        projectSourceFolder,
+        //        workspace);
+        //    var solution = workspace.CurrentSolution.AddProject(projectInfo);
 
-            solution = RemoveNonExistingFiles(solution);
-            solution = AddAssemblyAttributesFile(language, outputAssemblyPath, solution);
-            solution = DisambiguateSameNameLinkedFiles(solution);
+        //    solution = RemoveNonExistingFiles(solution);
+        //    solution = AddAssemblyAttributesFile(language, outputAssemblyPath, solution);
+        //    solution = DisambiguateSameNameLinkedFiles(solution);
 
-            solution.Workspace.WorkspaceFailed += WorkspaceFailed;
+        //    solution.Workspace.WorkspaceFailed += WorkspaceFailed;
 
-            return solution;
-        }
+        //    return solution;
+        //}
 
         private static Solution DisambiguateSameNameLinkedFiles(Solution solution)
         {
@@ -187,79 +188,79 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             return project.Solution;
         }
 
-        private static Solution RemoveNonExistingFiles(Solution solution)
-        {
-            foreach (var projectId in solution.ProjectIds.ToArray())
-            {
-                var project = solution.GetProject(projectId);
-                solution = RemoveNonExistingDocuments(project);
+        //private static Solution RemoveNonExistingFiles(Solution solution)
+        //{
+        //    foreach (var projectId in solution.ProjectIds.ToArray())
+        //    {
+        //        var project = solution.GetProject(projectId);
+        //        solution = RemoveNonExistingDocuments(project);
 
-                project = solution.GetProject(projectId);
-                solution = RemoveNonExistingReferences(project);
-            }
+        //        project = solution.GetProject(projectId);
+        //        solution = RemoveNonExistingReferences(project);
+        //    }
 
-            return solution;
-        }
+        //    return solution;
+        //}
 
-        private static Solution RemoveNonExistingDocuments(Project project)
-        {
-            foreach (var documentId in project.DocumentIds.ToArray())
-            {
-                var document = project.GetDocument(documentId);
-                if (!File.Exists(document.FilePath))
-                {
-                    Log.Message("Document doesn't exist on disk: " + document.FilePath);
-                    project = project.RemoveDocument(documentId);
-                }
-            }
+        //private static Solution RemoveNonExistingDocuments(Project project)
+        //{
+        //    foreach (var documentId in project.DocumentIds.ToArray())
+        //    {
+        //        var document = project.GetDocument(documentId);
+        //        if (!File.Exists(document.FilePath))
+        //        {
+        //            Log.Message("Document doesn't exist on disk: " + document.FilePath);
+        //            project = project.RemoveDocument(documentId);
+        //        }
+        //    }
 
-            return project.Solution;
-        }
+        //    return project.Solution;
+        //}
 
-        private static Solution RemoveNonExistingReferences(Project project)
-        {
-            foreach (var metadataReference in project.MetadataReferences.ToArray())
-            {
-                if (!File.Exists(metadataReference.Display))
-                {
-                    Log.Message("Reference assembly doesn't exist on disk: " + metadataReference.Display);
-                    project = project.RemoveMetadataReference(metadataReference);
-                }
-            }
+        //private static Solution RemoveNonExistingReferences(Project project)
+        //{
+        //    foreach (var metadataReference in project.MetadataReferences.ToArray())
+        //    {
+        //        if (!File.Exists(metadataReference.Display))
+        //        {
+        //            Log.Message("Reference assembly doesn't exist on disk: " + metadataReference.Display);
+        //            project = project.RemoveMetadataReference(metadataReference);
+        //        }
+        //    }
 
-            return project.Solution;
-        }
+        //    return project.Solution;
+        //}
 
-        private static Solution AddAssemblyAttributesFile(string language, string outputAssemblyPath, Solution solution)
-        {
-            if (!File.Exists(outputAssemblyPath))
-            {
-                Log.Exception("AddAssemblyAttributesFile: assembly doesn't exist: " + outputAssemblyPath);
-                return solution;
-            }
+        //private static Solution AddAssemblyAttributesFile(string language, string outputAssemblyPath, Solution solution)
+        //{
+        //    if (!File.Exists(outputAssemblyPath))
+        //    {
+        //        Log.Exception("AddAssemblyAttributesFile: assembly doesn't exist: " + outputAssemblyPath);
+        //        return solution;
+        //    }
 
-            var assemblyAttributesFileText = MetadataReading.GetAssemblyAttributesFileText(
-                assemblyFilePath: outputAssemblyPath,
-                language: language);
-            if (assemblyAttributesFileText != null)
-            {
-                var extension = language == LanguageNames.CSharp ? ".cs" : ".vb";
-                var newAssemblyAttributesDocumentName = MetadataAsSource.GeneratedAssemblyAttributesFileName + extension;
-                var existingAssemblyAttributesFileName = "AssemblyAttributes" + extension;
+        //    var assemblyAttributesFileText = MetadataReading.GetAssemblyAttributesFileText(
+        //        assemblyFilePath: outputAssemblyPath,
+        //        language: language);
+        //    if (assemblyAttributesFileText != null)
+        //    {
+        //        var extension = language == LanguageNames.CSharp ? ".cs" : ".vb";
+        //        var newAssemblyAttributesDocumentName = MetadataAsSource.GeneratedAssemblyAttributesFileName + extension;
+        //        var existingAssemblyAttributesFileName = "AssemblyAttributes" + extension;
 
-                var project = solution.Projects.First();
-                if (project.Documents.All(d => d.Name != existingAssemblyAttributesFileName || d.Folders.Count != 0))
-                {
-                    var document = project.AddDocument(
-                        newAssemblyAttributesDocumentName,
-                        assemblyAttributesFileText,
-                        filePath: newAssemblyAttributesDocumentName);
-                    solution = document.Project.Solution;
-                }
-            }
+        //        var project = solution.Projects.First();
+        //        if (project.Documents.All(d => d.Name != existingAssemblyAttributesFileName || d.Folders.Count != 0))
+        //        {
+        //            var document = project.AddDocument(
+        //                newAssemblyAttributesDocumentName,
+        //                assemblyAttributesFileText,
+        //                filePath: newAssemblyAttributesDocumentName);
+        //            solution = document.Project.Solution;
+        //        }
+        //    }
 
-            return solution;
-        }
+        //    return solution;
+        //}
 
         public static string CurrentAssemblyName = null;
 
@@ -293,7 +294,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     var generator = new ProjectGenerator(this, project);
                     generator.Generate().GetAwaiter().GetResult();
 
-                    File.AppendAllText(Paths.ProcessedAssemblies, project.AssemblyName + Environment.NewLine, Encoding.UTF8);
+                    IOManager.AppendProcessedAssembly(project.AssemblyName);
+
                     if (processedAssemblyList != null)
                     {
                         processedAssemblyList.Add(project.AssemblyName);
@@ -305,7 +307,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 }
             }
 
-            new TypeScriptSupport().Generate(typeScriptFiles, SolutionDestinationFolder);
+            new TypeScriptSupport().Generate(typeScriptFiles, SolutionDestinationFolder, IOManager);
 
             if (currentBatch.Length > 1)
             {
@@ -324,34 +326,34 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             fieldInfo.SetValue(instance, null);
         }
 
-        public void GenerateExternalReferences(HashSet<string> assemblyList)
-        {
-            var externalReferences = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        //public void GenerateExternalReferences(HashSet<string> assemblyList)
+        //{
+        //    var externalReferences = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var project in solution.Projects)
-            {
-                var references = project.MetadataReferences
-                    .OfType<PortableExecutableReference>()
-                    .Where(m => File.Exists(m.FilePath))
-                    .Where(m => !assemblyList.Contains(Path.GetFileNameWithoutExtension(m.FilePath)))
-                    .Where(m => !IsPartOfSolution(Path.GetFileNameWithoutExtension(m.FilePath)))
-                    .Where(m => GetExternalAssemblyIndex(Path.GetFileNameWithoutExtension(m.FilePath)) == -1)
-                    .Select(m => Path.GetFullPath(m.FilePath));
-                foreach (var reference in references)
-                {
-                    externalReferences[Path.GetFileNameWithoutExtension(reference)] = reference;
-                }
-            }
+        //    foreach (var project in solution.Projects)
+        //    {
+        //        var references = project.MetadataReferences
+        //            .OfType<PortableExecutableReference>()
+        //            .Where(m => File.Exists(m.FilePath))
+        //            .Where(m => !assemblyList.Contains(Path.GetFileNameWithoutExtension(m.FilePath)))
+        //            .Where(m => !IsPartOfSolution(Path.GetFileNameWithoutExtension(m.FilePath)))
+        //            .Where(m => GetExternalAssemblyIndex(Path.GetFileNameWithoutExtension(m.FilePath)) == -1)
+        //            .Select(m => Path.GetFullPath(m.FilePath));
+        //        foreach (var reference in references)
+        //        {
+        //            externalReferences[Path.GetFileNameWithoutExtension(reference)] = reference;
+        //        }
+        //    }
 
-            foreach (var externalReference in externalReferences)
-            {
-                Log.Write(externalReference.Key, ConsoleColor.Magenta);
-                var solutionGenerator = new SolutionGenerator(
-                    externalReference.Value,
-                    Paths.SolutionDestinationFolder);
-                solutionGenerator.Generate(assemblyList);
-            }
-        }
+        //    foreach (var externalReference in externalReferences)
+        //    {
+        //        Log.Write(externalReference.Key, ConsoleColor.Magenta);
+        //        var solutionGenerator = new SolutionGenerator(
+        //            externalReference.Value,
+        //            Paths.SolutionDestinationFolder);
+        //        solutionGenerator.Generate(assemblyList);
+        //    }
+        //}
 
         public bool IsPartOfSolution(string assemblyName)
         {
@@ -467,7 +469,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         public void AddTypeScriptFile(string filePath)
         {
-            if (!File.Exists(filePath))
+            //todo: get this info later and in a more decoupled manner
+            if (!System.IO.File.Exists(filePath))
             {
                 return;
             }

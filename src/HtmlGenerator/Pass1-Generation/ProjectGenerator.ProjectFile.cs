@@ -1,5 +1,5 @@
 ﻿using System;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using Microsoft.Build.Evaluation;
 using Microsoft.SourceBrowser.Common;
@@ -13,7 +13,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         private void GenerateProjectFile()
         {
             var projectExtension = Path.GetExtension(ProjectFilePath);
-            if (!File.Exists(ProjectFilePath) ||
+            //todo: wtf is going on here
+            if (!System.IO.File.Exists(ProjectFilePath) ||
                 ".dll".Equals(projectExtension, StringComparison.OrdinalIgnoreCase) ||
                 ".winmd".Equals(projectExtension, StringComparison.OrdinalIgnoreCase))
             {
@@ -110,7 +111,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             xamlFile = Path.GetFullPath(xamlFile);
             var sourceXmlFile = xamlFile;
 
-            if (!File.Exists(sourceXmlFile))
+            //todo: wtf is this
+            if (!System.IO.File.Exists(sourceXmlFile))
             {
                 return;
             }

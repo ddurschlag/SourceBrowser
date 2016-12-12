@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using CS = Microsoft.CodeAnalysis.CSharp;
 using VB = Microsoft.CodeAnalysis.VisualBasic;
+using Microsoft.SourceBrowser.Common.Entity;
 
 namespace Microsoft.SourceBrowser.HtmlGenerator
 {

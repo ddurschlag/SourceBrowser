@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -52,59 +52,59 @@ namespace Microsoft.SourceBrowser.BuildLogParser
             nonExistingReferencesToCompilerInvocationMap = null;
         }
 
-        public static IEnumerable<CompilerInvocation> GetInvocations(string logFilePath)
-        {
-            return GetInvocations(logFiles: new[] { logFilePath });
-        }
+        //public static IEnumerable<CompilerInvocation> GetInvocations(string logFilePath)
+        //{
+        //    return GetInvocations(logFiles: new[] { logFilePath });
+        //}
 
-        public static IEnumerable<CompilerInvocation> GetInvocations(Options options = null, IEnumerable<string> logFiles = null)
-        {
-            var analyzer = new LogAnalyzer();
-            var invocationBuckets = new Dictionary<string, IEnumerable<CompilerInvocation>>(StringComparer.OrdinalIgnoreCase);
-            using (Disposable.Timing("Analyzing log files"))
-            {
-#if true
-                Parallel.ForEach(logFiles, logFile =>
-                {
-                    var set = analyzer.AnalyzeLogFile(logFile);
-                    lock (invocationBuckets)
-                    {
-                        invocationBuckets.Add(Path.GetFileNameWithoutExtension(logFile), set);
-                    }
-                });
-#else
-                foreach (var logFile in logFiles)
-                {
-                    var set = analyzer.AnalyzeLogFile(logFile);
-                    lock (invocationBuckets)
-                    {
-                        invocationBuckets.Add(Path.GetFileNameWithoutExtension(logFile), set);
-                    }
-                }
-#endif
-            }
+//        public static IEnumerable<CompilerInvocation> GetInvocations(Options options = null, IEnumerable<string> logFiles = null)
+//        {
+//            var analyzer = new LogAnalyzer();
+//            var invocationBuckets = new Dictionary<string, IEnumerable<CompilerInvocation>>(StringComparer.OrdinalIgnoreCase);
+//            using (Disposable.Timing("Analyzing log files"))
+//            {
+//#if true
+//                Parallel.ForEach(logFiles, logFile =>
+//                {
+//                    var set = analyzer.AnalyzeLogFile(logFile);
+//                    lock (invocationBuckets)
+//                    {
+//                        invocationBuckets.Add(Path.GetFileNameWithoutExtension(logFile), set);
+//                    }
+//                });
+//#else
+//                foreach (var logFile in logFiles)
+//                {
+//                    var set = analyzer.AnalyzeLogFile(logFile);
+//                    lock (invocationBuckets)
+//                    {
+//                        invocationBuckets.Add(Path.GetFileNameWithoutExtension(logFile), set);
+//                    }
+//                }
+//#endif
+//            }
 
-            var buckets = invocationBuckets.OrderBy(kvp => kvp.Key).ToArray();
-            foreach (var bucket in buckets)
-            {
-                foreach (var invocation in bucket.Value)
-                {
-                    analyzer.SelectFinalInvocation(invocation);
-                }
-            }
+//            var buckets = invocationBuckets.OrderBy(kvp => kvp.Key).ToArray();
+//            foreach (var bucket in buckets)
+//            {
+//                foreach (var invocation in bucket.Value)
+//                {
+//                    analyzer.SelectFinalInvocation(invocation);
+//                }
+//            }
 
-            FixOutputPaths(analyzer);
+//            FixOutputPaths(analyzer);
 
-            if (options != null && options.SanityCheck)
-            {
-                using (Disposable.Timing("Sanity check"))
-                {
-                    SanityCheck(analyzer, options);
-                }
-            }
+//            if (options != null && options.SanityCheck)
+//            {
+//                using (Disposable.Timing("Sanity check"))
+//                {
+//                    SanityCheck(analyzer, options);
+//                }
+//            }
 
-            return analyzer.Invocations;
-        }
+//            return analyzer.Invocations;
+//        }
 
         public class Options
         {
@@ -227,71 +227,71 @@ namespace Microsoft.SourceBrowser.BuildLogParser
             }
         }
 
-        public static void SanityCheckAfterMetadataAsSource(IEnumerable<CompilerInvocation> invocations, Options options = null)
-        {
-            var allInvocationAssemblyNames = new HashSet<string>(
-                invocations.Select(i => i.AssemblyName),
-                StringComparer.OrdinalIgnoreCase);
-            var allReferenceAssemblyNames = new HashSet<string>(
-                invocations
-                .SelectMany(i => i.ReferencedBinaries)
-                .Select(b => Path.GetFileNameWithoutExtension(b)), StringComparer.OrdinalIgnoreCase);
-            allReferenceAssemblyNames.ExceptWith(allInvocationAssemblyNames);
+        //public static void SanityCheckAfterMetadataAsSource(IEnumerable<CompilerInvocation> invocations, Options options = null)
+        //{
+        //    var allInvocationAssemblyNames = new HashSet<string>(
+        //        invocations.Select(i => i.AssemblyName),
+        //        StringComparer.OrdinalIgnoreCase);
+        //    var allReferenceAssemblyNames = new HashSet<string>(
+        //        invocations
+        //        .SelectMany(i => i.ReferencedBinaries)
+        //        .Select(b => Path.GetFileNameWithoutExtension(b)), StringComparer.OrdinalIgnoreCase);
+        //    allReferenceAssemblyNames.ExceptWith(allInvocationAssemblyNames);
 
-            //var invocationsWithUnindexedReferences = analyzer.Invocations
-            //    .Where(i => i.ReferencedBinaries.Any(b => !allInvocationAssemblyNames.Contains(Path.GetFileNameWithoutExtension(b))))
-            //    .Select(i => Tuple.Create(i, i.ReferencedBinaries.Where(b => !allInvocationAssemblyNames.Contains(Path.GetFileNameWithoutExtension(b))).ToArray()))
-            //    .ToArray();
-            //if (invocationsWithUnindexedReferences.Length > 0)
-            //{
-            //    throw new InvalidOperationException("Invocation with unindexed references: " + invocationsWithUnindexedReferences.First().Item1.ProjectFilePath);
-            //}
+        //    //var invocationsWithUnindexedReferences = analyzer.Invocations
+        //    //    .Where(i => i.ReferencedBinaries.Any(b => !allInvocationAssemblyNames.Contains(Path.GetFileNameWithoutExtension(b))))
+        //    //    .Select(i => Tuple.Create(i, i.ReferencedBinaries.Where(b => !allInvocationAssemblyNames.Contains(Path.GetFileNameWithoutExtension(b))).ToArray()))
+        //    //    .ToArray();
+        //    //if (invocationsWithUnindexedReferences.Length > 0)
+        //    //{
+        //    //    throw new InvalidOperationException("Invocation with unindexed references: " + invocationsWithUnindexedReferences.First().Item1.ProjectFilePath);
+        //    //}
 
-            if (options == null || options.CheckForMissingOutputBinary)
-            {
-                var invocationsWhereBinaryDoesntExist = invocations.Where(
-                    i => !File.Exists(i.OutputAssemblyPath)).ToArray();
-                if (invocationsWhereBinaryDoesntExist.Length > 0)
-                {
-                    throw new InvalidOperationException("Invocation where output binary doesn't exist: " + invocationsWhereBinaryDoesntExist.First().OutputAssemblyPath);
-                }
-            }
-        }
+        //    if (options == null || options.CheckForMissingOutputBinary)
+        //    {
+        //        var invocationsWhereBinaryDoesntExist = invocations.Where(
+        //            i => !File.Exists(i.OutputAssemblyPath)).ToArray();
+        //        if (invocationsWhereBinaryDoesntExist.Length > 0)
+        //        {
+        //            throw new InvalidOperationException("Invocation where output binary doesn't exist: " + invocationsWhereBinaryDoesntExist.First().OutputAssemblyPath);
+        //        }
+        //    }
+        //}
 
-        public IEnumerable<CompilerInvocation> AnalyzeLogFile(string logFile)
-        {
-            Log.Write(logFile);
-            return ProcessLogFileLines(logFile);
-        }
+        //public IEnumerable<CompilerInvocation> AnalyzeLogFile(string logFile)
+        //{
+        //    Log.Write(logFile);
+        //    return ProcessLogFileLines(logFile);
+        //}
 
-        private IEnumerable<CompilerInvocation> ProcessLogFileLines(string logFile)
-        {
-            var invocations = new HashSet<CompilerInvocation>();
+        //private IEnumerable<CompilerInvocation> ProcessLogFileLines(string logFile)
+        //{
+        //    var invocations = new HashSet<CompilerInvocation>();
 
-            var lines = File.ReadLines(logFile);
-            foreach (var currentLine in lines)
-            {
-                string line = currentLine;
-                line = line.Trim();
+        //    var lines = File.ReadLines(logFile);
+        //    foreach (var currentLine in lines)
+        //    {
+        //        string line = currentLine;
+        //        line = line.Trim();
 
-                if (ProcessCopyingFileFrom(line))
-                {
-                    continue;
-                }
+        //        if (ProcessCopyingFileFrom(line))
+        //        {
+        //            continue;
+        //        }
 
-                if (ProcessDoneBuildingProject(line))
-                {
-                    continue;
-                }
+        //        if (ProcessDoneBuildingProject(line))
+        //        {
+        //            continue;
+        //        }
 
-                if (ProcessInvocation(line, i => invocations.Add(i)))
-                {
-                    continue;
-                }
-            }
+        //        if (ProcessInvocation(line, i => invocations.Add(i)))
+        //        {
+        //            continue;
+        //        }
+        //    }
 
-            return invocations;
-        }
+        //    return invocations;
+        //}
 
         private bool ProcessCopyingFileFrom(string line)
         {
@@ -364,129 +364,129 @@ namespace Microsoft.SourceBrowser.BuildLogParser
             return false;
         }
 
-        private bool ProcessDoneBuildingProject(string line)
-        {
-            var doneBuildingProject = line.IndexOf("Done Building Project");
-            if (doneBuildingProject > -1)
-            {
-                string projectFilePath = ExtractProjectFilePath(line, doneBuildingProject);
+        //private bool ProcessDoneBuildingProject(string line)
+        //{
+        //    var doneBuildingProject = line.IndexOf("Done Building Project");
+        //    if (doneBuildingProject > -1)
+        //    {
+        //        string projectFilePath = ExtractProjectFilePath(line, doneBuildingProject);
 
-                if (!File.Exists(projectFilePath))
-                {
-                    Log.Message("Project doesn't exist: " + projectFilePath);
-                    return true;
-                }
+        //        if (!File.Exists(projectFilePath))
+        //        {
+        //            Log.Message("Project doesn't exist: " + projectFilePath);
+        //            return true;
+        //        }
 
-                string outputAssemblyName = GetAssemblyNameFromProject(projectFilePath);
-                if (string.IsNullOrWhiteSpace(outputAssemblyName))
-                {
-                    return true;
-                }
+        //        string outputAssemblyName = GetAssemblyNameFromProject(projectFilePath);
+        //        if (string.IsNullOrWhiteSpace(outputAssemblyName))
+        //        {
+        //            return true;
+        //        }
 
-                lock (this.projectFilePathToAssemblyNameMap)
-                {
-                    if (!this.projectFilePathToAssemblyNameMap.ContainsKey(projectFilePath))
-                    {
-                        lock (this.assemblyNameToProjectFilePathsMap)
-                        {
-                            this.assemblyNameToProjectFilePathsMap.Add(outputAssemblyName, projectFilePath);
-                        }
+        //        lock (this.projectFilePathToAssemblyNameMap)
+        //        {
+        //            if (!this.projectFilePathToAssemblyNameMap.ContainsKey(projectFilePath))
+        //            {
+        //                lock (this.assemblyNameToProjectFilePathsMap)
+        //                {
+        //                    this.assemblyNameToProjectFilePathsMap.Add(outputAssemblyName, projectFilePath);
+        //                }
 
-                        this.projectFilePathToAssemblyNameMap[projectFilePath] = outputAssemblyName;
-                    }
-                }
+        //                this.projectFilePathToAssemblyNameMap[projectFilePath] = outputAssemblyName;
+        //            }
+        //        }
 
-                return true;
-            }
+        //        return true;
+        //    }
 
-            return false;
-        }
+        //    return false;
+        //}
 
-        private string GetAssemblyNameFromProject(string projectFilePath)
-        {
-            string assemblyName = null;
+        //private string GetAssemblyNameFromProject(string projectFilePath)
+        //{
+        //    string assemblyName = null;
 
-            lock (projectFilePathToAssemblyNameCache)
-            {
-                if (projectFilePathToAssemblyNameCache.TryGetValue(projectFilePath, out assemblyName))
-                {
-                    return assemblyName;
-                }
-            }
+        //    lock (projectFilePathToAssemblyNameCache)
+        //    {
+        //        if (projectFilePathToAssemblyNameCache.TryGetValue(projectFilePath, out assemblyName))
+        //        {
+        //            return assemblyName;
+        //        }
+        //    }
 
-            assemblyName = AssemblyNameExtractor.GetAssemblyNameFromProject(projectFilePath);
+        //    assemblyName = AssemblyNameExtractor.GetAssemblyNameFromProject(projectFilePath);
 
-            if (assemblyName == null)
-            {
-                Log.Exception("Couldn't extract AssemblyName from project: " + projectFilePath);
-            }
-            else
-            {
-                lock (projectFilePathToAssemblyNameCache)
-                {
-                    projectFilePathToAssemblyNameCache[projectFilePath] = assemblyName;
-                }
-            }
+        //    if (assemblyName == null)
+        //    {
+        //        Log.Exception("Couldn't extract AssemblyName from project: " + projectFilePath);
+        //    }
+        //    else
+        //    {
+        //        lock (projectFilePathToAssemblyNameCache)
+        //        {
+        //            projectFilePathToAssemblyNameCache[projectFilePath] = assemblyName;
+        //        }
+        //    }
 
-            return assemblyName;
-        }
+        //    return assemblyName;
+        //}
 
-        private bool ProcessInvocation(string line, Action<CompilerInvocation> collector)
-        {
-            bool csc = false;
-            bool vbc = false;
-            bool tsc = false;
+        //private bool ProcessInvocation(string line, Action<CompilerInvocation> collector)
+        //{
+        //    bool csc = false;
+        //    bool vbc = false;
+        //    bool tsc = false;
 
-            csc = line.IndexOf("csc", StringComparison.OrdinalIgnoreCase) != -1;
-            if (csc &&
-                (line.IndexOf(@"\csc.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
-                 line.IndexOf(@"\csc2.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
-                 line.IndexOf(@"\rcsc.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
-                 line.IndexOf(@"\rcsc2.exe ", StringComparison.OrdinalIgnoreCase) != -1))
-            {
-                AddInvocation(line, collector);
-                return true;
-            }
+        //    csc = line.IndexOf("csc", StringComparison.OrdinalIgnoreCase) != -1;
+        //    if (csc &&
+        //        (line.IndexOf(@"\csc.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
+        //         line.IndexOf(@"\csc2.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
+        //         line.IndexOf(@"\rcsc.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
+        //         line.IndexOf(@"\rcsc2.exe ", StringComparison.OrdinalIgnoreCase) != -1))
+        //    {
+        //        AddInvocation(line, collector);
+        //        return true;
+        //    }
 
-            vbc = line.IndexOf("vbc", StringComparison.OrdinalIgnoreCase) != -1;
-            if (vbc &&
-                (line.IndexOf(@"\vbc.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
-                 line.IndexOf(@"\vbc2.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
-                 line.IndexOf(@"\rvbc.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
-                 line.IndexOf(@"\rvbc2.exe ", StringComparison.OrdinalIgnoreCase) != -1))
-            {
-                AddInvocation(line, collector);
-                return true;
-            }
+        //    vbc = line.IndexOf("vbc", StringComparison.OrdinalIgnoreCase) != -1;
+        //    if (vbc &&
+        //        (line.IndexOf(@"\vbc.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
+        //         line.IndexOf(@"\vbc2.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
+        //         line.IndexOf(@"\rvbc.exe ", StringComparison.OrdinalIgnoreCase) != -1 ||
+        //         line.IndexOf(@"\rvbc2.exe ", StringComparison.OrdinalIgnoreCase) != -1))
+        //    {
+        //        AddInvocation(line, collector);
+        //        return true;
+        //    }
 
-            tsc = line.IndexOf("\tsc.exe ", StringComparison.OrdinalIgnoreCase) != -1;
-            if (tsc)
-            {
-                AddTypeScriptInvocation(line, collector);
-                return true;
-            }
+        //    tsc = line.IndexOf("\tsc.exe ", StringComparison.OrdinalIgnoreCase) != -1;
+        //    if (tsc)
+        //    {
+        //        AddTypeScriptInvocation(line, collector);
+        //        return true;
+        //    }
 
-            return false;
-        }
+        //    return false;
+        //}
 
-        private void AddTypeScriptInvocation(string line, Action<CompilerInvocation> collector)
-        {
-            var invocation = CompilerInvocation.CreateTypeScript(line);
-            collector(invocation);
-        }
+        //private void AddTypeScriptInvocation(string line, Action<CompilerInvocation> collector)
+        //{
+        //    var invocation = CompilerInvocation.CreateTypeScript(line);
+        //    collector(invocation);
+        //}
 
-        private static void AddInvocation(string line, Action<CompilerInvocation> collector)
-        {
-            var invocation = new CompilerInvocation(line);
-            collector(invocation);
-            lock (cacheOfKnownExistingBinaries)
-            {
-                foreach (var reference in invocation.ReferencedBinaries)
-                {
-                    cacheOfKnownExistingBinaries.Add(reference);
-                }
-            }
-        }
+        //private static void AddInvocation(string line, Action<CompilerInvocation> collector)
+        //{
+        //    var invocation = new CompilerInvocation(line);
+        //    collector(invocation);
+        //    lock (cacheOfKnownExistingBinaries)
+        //    {
+        //        foreach (var reference in invocation.ReferencedBinaries)
+        //        {
+        //            cacheOfKnownExistingBinaries.Add(reference);
+        //        }
+        //    }
+        //}
 
         private void AssignProjectFilePath(CompilerInvocation invocation)
         {
@@ -570,37 +570,37 @@ namespace Microsoft.SourceBrowser.BuildLogParser
             return projectFilePath;
         }
 
-        public static void WriteInvocationsToFile(IEnumerable<CompilerInvocation> invocations, string fileName)
-        {
-            var projects = invocations
-                .Where(i => i.ProjectFilePath != null && i.ProjectFilePath.Length >= 3)
-                .Select(i => i.ProjectFilePath.Substring(3))
-                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+        //public static void WriteInvocationsToFile(IEnumerable<CompilerInvocation> invocations, string fileName)
+        //{
+        //    var projects = invocations
+        //        .Where(i => i.ProjectFilePath != null && i.ProjectFilePath.Length >= 3)
+        //        .Select(i => i.ProjectFilePath.Substring(3))
+        //        .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+        //        .ToArray();
 
-            var sortedInvocations = invocations
-                .OrderBy(i => i.AssemblyName, StringComparer.OrdinalIgnoreCase);
+        //    var sortedInvocations = invocations
+        //        .OrderBy(i => i.AssemblyName, StringComparer.OrdinalIgnoreCase);
 
-            var assemblies = sortedInvocations
-                .Select(i => i.AssemblyName);
+        //    var assemblies = sortedInvocations
+        //        .Select(i => i.AssemblyName);
 
-            var assemblyPaths = GetAssemblyPaths(sortedInvocations);
-            assemblyPaths = assemblyPaths
-                .OrderBy(s => Path.GetFileName(s));
+        //    var assemblyPaths = GetAssemblyPaths(sortedInvocations);
+        //    assemblyPaths = assemblyPaths
+        //        .OrderBy(s => Path.GetFileName(s));
 
-            var lines = sortedInvocations
-                .SelectMany(i => new[] { i.ProjectFilePath ?? "-", i.OutputAssemblyPath, i.CommandLine });
+        //    var lines = sortedInvocations
+        //        .SelectMany(i => new[] { i.ProjectFilePath ?? "-", i.OutputAssemblyPath, i.CommandLine });
 
-            var path = Path.GetDirectoryName(fileName);
-            var assembliesTxt = Path.Combine(path, "Assemblies.txt");
-            var projectsTxt = Path.Combine(path, "Projects.txt");
-            var assemblyPathsTxt = Path.Combine(path, "AssemblyPaths.txt");
+        //    var path = Path.GetDirectoryName(fileName);
+        //    var assembliesTxt = Path.Combine(path, "Assemblies.txt");
+        //    var projectsTxt = Path.Combine(path, "Projects.txt");
+        //    var assemblyPathsTxt = Path.Combine(path, "AssemblyPaths.txt");
 
-            File.WriteAllLines(fileName, lines);
-            File.WriteAllLines(projectsTxt, projects);
-            File.WriteAllLines(assembliesTxt, assemblies);
-            File.WriteAllLines(assemblyPathsTxt, assemblyPaths);
-        }
+        //    File.WriteAllLines(fileName, lines);
+        //    File.WriteAllLines(projectsTxt, projects);
+        //    File.WriteAllLines(assembliesTxt, assemblies);
+        //    File.WriteAllLines(assemblyPathsTxt, assemblyPaths);
+        //}
 
         private static IEnumerable<string> GetAssemblyPaths(IEnumerable<CompilerInvocation> invocations)
         {
@@ -638,55 +638,55 @@ namespace Microsoft.SourceBrowser.BuildLogParser
             }
         }
 
-        public static void AddMetadataAsSourceAssemblies(List<CompilerInvocation> invocations)
-        {
-            var indexedAssemblies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var invocation in invocations)
-            {
-                indexedAssemblies.Add(invocation.AssemblyName);
-            }
+        //public static void AddMetadataAsSourceAssemblies(List<CompilerInvocation> invocations)
+        //{
+        //    var indexedAssemblies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        //    foreach (var invocation in invocations)
+        //    {
+        //        indexedAssemblies.Add(invocation.AssemblyName);
+        //    }
 
-            var notIndexedAssemblies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var binary in invocations.SelectMany(i => i.ReferencedBinaries))
-            {
-                var assemblyName = Path.GetFileNameWithoutExtension(binary);
-                if (!indexedAssemblies.Contains(assemblyName) && ShouldIncludeNotIndexedAssembly(binary, assemblyName))
-                {
-                    string existing = null;
-                    if (!notIndexedAssemblies.TryGetValue(assemblyName, out existing) ||
-                        binary.Length < existing.Length ||
-                        (binary.Length == existing.Length && binary.CompareTo(existing) > 0))
-                    {
-                        // make sure we always prefer the .dll that has shortest file path on disk
-                        // Not only to disambiguate in a stable fashion, but also it's a good heuristic
-                        // Shorter paths seem to be more widely used and are less obscure.
-                        notIndexedAssemblies[assemblyName] = binary;
-                    }
-                }
-            }
+        //    var notIndexedAssemblies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        //    foreach (var binary in invocations.SelectMany(i => i.ReferencedBinaries))
+        //    {
+        //        var assemblyName = Path.GetFileNameWithoutExtension(binary);
+        //        if (!indexedAssemblies.Contains(assemblyName) && ShouldIncludeNotIndexedAssembly(binary, assemblyName))
+        //        {
+        //            string existing = null;
+        //            if (!notIndexedAssemblies.TryGetValue(assemblyName, out existing) ||
+        //                binary.Length < existing.Length ||
+        //                (binary.Length == existing.Length && binary.CompareTo(existing) > 0))
+        //            {
+        //                // make sure we always prefer the .dll that has shortest file path on disk
+        //                // Not only to disambiguate in a stable fashion, but also it's a good heuristic
+        //                // Shorter paths seem to be more widely used and are less obscure.
+        //                notIndexedAssemblies[assemblyName] = binary;
+        //            }
+        //        }
+        //    }
 
-            foreach (var notIndexedAssembly in notIndexedAssemblies)
-            {
-                var invocation = new CompilerInvocation()
-                {
-                    AssemblyName = notIndexedAssembly.Key,
-                    CommandLine = "-",
-                    OutputAssemblyPath = notIndexedAssembly.Value,
-                    ProjectFilePath = "-"
-                };
-                invocations.Add(invocation);
-            }
-        }
+        //    foreach (var notIndexedAssembly in notIndexedAssemblies)
+        //    {
+        //        var invocation = new CompilerInvocation()
+        //        {
+        //            AssemblyName = notIndexedAssembly.Key,
+        //            CommandLine = "-",
+        //            OutputAssemblyPath = notIndexedAssembly.Value,
+        //            ProjectFilePath = "-"
+        //        };
+        //        invocations.Add(invocation);
+        //    }
+        //}
 
-        private static bool ShouldIncludeNotIndexedAssembly(string binary, string assemblyName)
-        {
-            if (!File.Exists(binary))
-            {
-                return false;
-            }
+        //private static bool ShouldIncludeNotIndexedAssembly(string binary, string assemblyName)
+        //{
+        //    if (!File.Exists(binary))
+        //    {
+        //        return false;
+        //    }
 
-            return true;
-        }
+        //    return true;
+        //}
 
         public static void AddNonExistingReference(
             CompilerInvocation compilerInvocation,

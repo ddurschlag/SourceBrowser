@@ -5,6 +5,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator.Tests
     [TestClass]
     public class SerializationUnitTests
     {
+        //todo: Move to text utility tests. Not in serialization any more
         [TestMethod]
         public void TestULongToHexStringRoundtrip()
         {
@@ -12,10 +13,10 @@ namespace Microsoft.SourceBrowser.HtmlGenerator.Tests
             {
                 var originalStringId = Paths.GetMD5Hash(i.ToString(), 16);
                 var id = Paths.GetMD5HashULong(i.ToString(), 16);
-                var stringId = Serialization.ULongToHexString(id);
+                var stringId = Common.TextUtilities.ULongToHexString(id);
                 Assert.AreEqual(originalStringId, stringId);
                 Assert.AreEqual(16, stringId.Length);
-                var actualId = Serialization.HexStringToULong(stringId);
+                var actualId = Common.TextUtilities.HexStringToULong(stringId);
                 Assert.AreEqual(id, actualId);
             }
         }

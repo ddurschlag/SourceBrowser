@@ -5,6 +5,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.SourceBrowser.Common;
+using System.Linq;
 
 namespace Microsoft.SourceBrowser.HtmlGenerator
 {
@@ -162,11 +163,13 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 Paths.SolutionDestinationFolder = Path.Combine(Microsoft.SourceBrowser.Common.Paths.BaseAppFolder, "Index");
             }
 
+            IOManager = new IO.SolutionManager(Paths.SolutionDestinationFolder);
+
             Log.ErrorLogFilePath = Path.Combine(Paths.SolutionDestinationFolder, Log.ErrorLogFile);
             Log.MessageLogFilePath = Path.Combine(Paths.SolutionDestinationFolder, Log.MessageLogFile);
 
             // Warning, this will delete and recreate your destination folder
-            Paths.PrepareDestinationFolder(force, forceContinue);
+            PrepareDestinationFolder(force, forceContinue);
 
             using (Disposable.Timing("Generating website"))
             {
@@ -183,6 +186,56 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             {
                 Console.ReadLine();
             }
+        }
+
+        public static void PrepareDestinationFolder(bool? forceOverwrite = null, bool? forceContinue = null)
+        {
+            if (!Configuration.CreateFoldersOnDisk &&
+                !Configuration.WriteDocumentsToDisk &&
+                !Configuration.WriteProjectAuxiliaryFilesToDisk)
+            {
+                return;
+            }
+
+            if (Directory.Exists(IOManager.SolutionDestinationFolder))
+            {
+                if (!forceOverwrite.HasValue)
+                {
+                    Log.Write(string.Format("Warning, {0} will be deleted! Are you sure? (y/n)", IOManager.SolutionDestinationFolder), ConsoleColor.Red);
+                    forceOverwrite = Console.ReadKey().KeyChar == 'y';
+                }
+                if (!forceOverwrite.Value)
+                {
+                    if (!File.Exists(Paths.ProcessedAssemblies))
+                    {
+                        Environment.Exit(0);
+                    }
+
+                    if (!forceContinue.HasValue)
+                    {
+                        Log.Write("Would you like to continue previously aborted index operation where it left off?", ConsoleColor.Green);
+                        forceContinue = Console.ReadKey().KeyChar == 'y';
+                    }
+                    if (!forceContinue.Value)
+                    {
+                        Environment.Exit(0);
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine();
+                }
+
+
+                Log.Write("Deleting " + IOManager.SolutionDestinationFolder);
+                Directory.Delete(IOManager.SolutionDestinationFolder, recursive: true);
+            }
+
+            Directory.CreateDirectory(IOManager.SolutionDestinationFolder);
         }
 
         private static void AddProject(List<string> projects, string path)
@@ -222,6 +275,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 + @"[/assemblylist]");
         }
 
+        private static IO.SolutionManager IOManager;
         private static readonly Folder<Project> mergedSolutionExplorerRoot = new Folder<Project>();
 
         private static void IndexSolutions(IEnumerable<string> solutionFilePaths, Dictionary<string, string> properties, Federation federation)
@@ -248,6 +302,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     using (var solutionGenerator = new SolutionGenerator(
                         path,
                         Paths.SolutionDestinationFolder,
+                        IOManager,
                         properties: properties.ToImmutableDictionary(),
                         federation: federation))
                     {
@@ -270,7 +325,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             {
                 try
                 {
-                    var solutionFinalizer = new SolutionFinalizer(Paths.SolutionDestinationFolder);
+                    var solutionFinalizer = new SolutionFinalizer(Paths.SolutionDestinationFolder, IOManager);
                     solutionFinalizer.FinalizeProjects(emitAssemblyList, federation, mergedSolutionExplorerRoot);
                 }
                 catch (Exception ex)
@@ -282,7 +337,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         private static void GenerateLooseFilesProject(string projectName, string solutionDestinationPath)
         {
-            var projectGenerator = new ProjectGenerator(projectName, new IO.SolutionManager(solutionDestinationPath, true));
+            var projectGenerator = new ProjectGenerator(projectName, new IO.SolutionManager(solutionDestinationPath));
             projectGenerator.GenerateNonProjectFolder();
         }
     }

@@ -18,9 +18,9 @@
     <Compile Include="AssemblyNameExtractor.cs" />
     <Compile Include="AssertTraceListener.cs" />
     <Compile Include="Disposable.cs" />
-    <Compile Include="FileUtilities.cs" />
+    <Compile Include="Entity\DeclaredSymbolInfo.cs" />
+    <Compile Include="Entity\Reference.cs" />
     <Compile Include="Huffman.cs" />
-    <Compile Include="IsManagedAssembly.cs" />
     <Compile Include="Log.cs" />
     <Compile Include="Measure.cs" />
     <Compile Include="MultiDictionary.cs" />
@@ -29,6 +29,7 @@
     <Compile Include="ProcessLaunchService.cs" />
     <Compile Include="RangeUtilities.cs" />
     <Compile Include="SymbolIndex.cs" />
+    <Compile Include="SymbolIndexBuilder.cs" />
     <Compile Include="SymbolLocation.cs" />
     <Compile Include="TextUtilities.cs" />
   </ItemGroup>

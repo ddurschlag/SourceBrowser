@@ -1,26 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SourceBrowser.Common;
+using Microsoft.SourceBrowser.Common.Entity;
 
 namespace Microsoft.SourceBrowser.HtmlGenerator
 {
     public partial class ProjectFinalizer
     {
+        public const string PATCH_MARKER = "<!-- Patched -->";
+
         public void CreateReferencesFiles()
         {
-            BackpatchUnreferencedDeclarations(referencesFolder);
-            Markup.WriteRedirectFile(ProjectDestinationFolder);
-            GenerateFinalReferencesFiles(referencesFolder);
+            BackpatchUnreferencedDeclarations();
+            Markup.WriteRedirectFile(IOManager);
+            GenerateFinalReferencesFiles();
         }
 
-        public void GenerateFinalReferencesFiles(string referencesFolder)
+        public void GenerateFinalReferencesFiles()
         {
-            var files = Directory.GetFiles(referencesFolder, "*.txt");
-            if (files.Length == 0)
+
+            var files = IOManager.GetReferencesFiles();
+            if (!files.Any())
             {
                 return;
             }
@@ -42,17 +46,13 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             });
         }
 
-        private void GenerateReferencesFile(string referencesFile)
+        private void GenerateReferencesFile(IO.SymbolReferencesThingy referencesFile)
         {
-            string[] referencesLines = File.ReadAllLines(referencesFile, Encoding.UTF8);
-            string rawReferencesFile = referencesFile;
-            referencesFile = Path.ChangeExtension(referencesFile, ".html");
-
             string symbolName = null;
             int totalReferenceCount = 0;
-            var referenceKindGroups = CreateReferences(referencesLines, out totalReferenceCount, out symbolName);
+            var referenceKindGroups = CreateReferences(referencesFile, out totalReferenceCount, out symbolName);
 
-            using (var writer = new StreamWriter(referencesFile, append: false, encoding: Encoding.UTF8))
+            using (var writer = referencesFile.GetOutputWriter())
             {
                 Markup.WriteReferencesFileHeader(writer, symbolName);
 
@@ -62,8 +62,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     this.AssemblyId != Constants.MSBuildTasksAssembly &&
                     this.AssemblyId != Constants.GuidAssembly)
                 {
-                    string symbolId = Path.GetFileNameWithoutExtension(referencesFile);
-                    var id = Serialization.HexStringToULong(symbolId);
+                    var id = TextUtilities.HexStringToULong(referencesFile.SymbolId);
                     WriteBaseMember(id, writer);
                     WriteImplementedInterfaceMembers(id, writer);
                 }
@@ -179,7 +178,88 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             //File.Delete(rawReferencesFile);
         }
 
-        private void WriteImplementedInterfaceMembers(ulong symbolId, StreamWriter writer)
+        public void CreateReferencingProjectList()
+        {
+            //todo: What's this 100?
+            if (ReferencingAssemblies.Count > 0 && ReferencingAssemblies.Count < 100)
+            {
+                IOManager.WriteReferencingAssemblies(ReferencingAssemblies);
+                PatchProjectExplorer();
+            }
+        }
+
+        private void PatchProjectExplorer()
+        {
+            if (ReferencingAssemblies.Count == 0 || ReferencingAssemblies.Count > 100)
+            {
+                return;
+            }
+
+            var sourceLines = IOManager.ReadProjectExplorer();
+
+            if (sourceLines == null) return;
+
+            //Check if already patched -- if so, skip it
+            if (sourceLines.Length > 0 && sourceLines[0].Equals(PATCH_MARKER))
+                return;
+
+            List<string> lines = new List<string>(sourceLines.Length + ReferencingAssemblies.Count + 3);
+
+            //Add marker to indicate this file has already been patched
+            lines.Add(PATCH_MARKER);
+
+            RelativeState state = RelativeState.Before;
+            foreach (var sourceLine in sourceLines)
+            {
+                switch (state)
+                {
+                    case RelativeState.Before:
+                        if (sourceLine == "<div class=\"folderTitle\">References</div><div class=\"folder\">")
+                        {
+                            state = RelativeState.Inside;
+                        }
+
+                        break;
+                    case RelativeState.Inside:
+                        if (sourceLine == "</div>")
+                        {
+                            state = RelativeState.InsertionPoint;
+                        }
+
+                        break;
+                    case RelativeState.InsertionPoint:
+                        lines.Add("<div class=\"folderTitle\">Used By</div><div class=\"folder\">");
+
+                        foreach (var referencingAssembly in ReferencingAssemblies)
+                        {
+                            string referenceHtml = Markup.GetProjectExplorerReference("/#" + referencingAssembly, referencingAssembly);
+                            lines.Add(referenceHtml);
+                        }
+
+                        lines.Add("</div>");
+
+                        state = RelativeState.After;
+                        break;
+                    case RelativeState.After:
+                        break;
+                    default:
+                        break;
+                }
+
+                lines.Add(sourceLine);
+            }
+            IOManager.WriteProjectExplorer(string.Join(Environment.NewLine, lines));
+        }
+
+        private enum RelativeState
+        {
+            Before,
+            Inside,
+            InsertionPoint,
+            After
+        }
+
+        private void WriteImplementedInterfaceMembers(ulong symbolId, System.IO.StreamWriter writer)
         {
             HashSet<Tuple<string, ulong>> implementedInterfaceMembers;
             if (!ImplementedInterfaceMembers.TryGetValue(symbolId, out implementedInterfaceMembers))
@@ -210,7 +290,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
         }
 
-        private void WriteBaseMember(ulong symbolId, StreamWriter writer)
+        private void WriteBaseMember(ulong symbolId, System.IO.StreamWriter writer)
         {
             Tuple<string, ulong> baseMemberLink;
             if (!BaseMembers.TryGetValue(symbolId, out baseMemberLink))
@@ -285,26 +365,23 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     >>
                 >>
             >> CreateReferences(
-            string[] referencesLines,
+            IO.SymbolReferencesThingy referencesLines,
             out int totalReferenceCount,
             out string referencedSymbolName)
         {
-            totalReferenceCount = 0;
             referencedSymbolName = null;
 
-            var list = new List<Reference>(referencesLines.Length / 2);
+            var list = referencesLines.ReadAllReferences().ToList();
+            totalReferenceCount = list.Count;
 
-            for (int i = 0; i < referencesLines.Length; i += 2)
+            foreach (var reference in list)
             {
-                var reference = new Reference(referencesLines[i], referencesLines[i + 1]);
-                list.Add(reference);
-                totalReferenceCount++;
                 if (referencedSymbolName == null &&
-                    reference.ToSymbolName != "this" &&
-                    reference.ToSymbolName != "base" &&
-                    reference.ToSymbolName != "var" &&
-                    reference.ToSymbolName != "UsingTask" &&
-                    reference.ToSymbolName != "[")
+                   reference.ToSymbolName != "this" &&
+                   reference.ToSymbolName != "base" &&
+                   reference.ToSymbolName != "var" &&
+                   reference.ToSymbolName != "UsingTask" &&
+                   reference.ToSymbolName != "[")
                 {
                     referencedSymbolName = reference.ToSymbolName;
                 }
@@ -342,7 +419,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             return result;
         }
 
-        private static void MergeOccurrences(StreamWriter writer, IEnumerable<Reference> referencesOnTheSameLine)
+        private static void MergeOccurrences(System.IO.StreamWriter writer, IEnumerable<Reference> referencesOnTheSameLine)
         {
             var text = referencesOnTheSameLine.First().ReferenceLineText;
             referencesOnTheSameLine = referencesOnTheSameLine.OrderBy(r => r.ReferenceColumnStart);
@@ -390,22 +467,22 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
         }
 
-        private static void Write(StreamWriter sw, string text)
+        private static void Write(System.IO.StreamWriter sw, string text)
         {
             sw.Write(text);
         }
 
-        private static void Write(StreamWriter sw, string format, params object[] args)
+        private static void Write(System.IO.StreamWriter sw, string format, params object[] args)
         {
             sw.Write(string.Format(format, args));
         }
 
-        private static void WriteLine(StreamWriter sw, string text)
+        private static void WriteLine(System.IO.StreamWriter sw, string text)
         {
             sw.WriteLine(text);
         }
 
-        private static void WriteLine(StreamWriter sw, string format, params object[] args)
+        private static void WriteLine(System.IO.StreamWriter sw, string format, params object[] args)
         {
             sw.WriteLine(string.Format(format, args));
         }

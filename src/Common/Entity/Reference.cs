@@ -1,6 +1,10 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace Microsoft.SourceBrowser.HtmlGenerator
+namespace Microsoft.SourceBrowser.Common.Entity
 {
     public enum ReferenceKind
     {
@@ -59,25 +63,6 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             ReferenceLineText = sourceLine;
             ToSymbolName = ReferenceLineText.Substring(ReferenceColumnStart, ReferenceColumnEnd - ReferenceColumnStart);
-        }
-
-        public void WriteTo(TextWriter writer)
-        {
-            writer.Write(FromAssemblyId);
-            writer.Write(';');
-            writer.Write(Url);
-            writer.Write(';');
-            writer.Write(FromLocalPath);
-            writer.Write(';');
-            writer.Write(ReferenceLineNumber);
-            writer.Write(';');
-            writer.Write(ReferenceColumnStart);
-            writer.Write(';');
-            writer.Write(ReferenceColumnEnd);
-            writer.Write(';');
-            writer.Write((int)Kind);
-            writer.WriteLine();
-            writer.WriteLine(ReferenceLineText);
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -110,32 +109,18 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         private static string referencesFileHeader = @"<!DOCTYPE html>
 <html><head><title>{0}</title><link rel=""stylesheet"" href=""../../styles.css""/><script src=""../../scripts.js""></script></head><body onload=""ro();"">";
 
-        public static void WriteReferencesFileHeader(StreamWriter writer, string title)
+        public static void WriteReferencesFileHeader(System.IO.StreamWriter writer, string title)
         {
             writer.WriteLine(referencesFileHeader, title);
         }
 
-        private static string zeroFileName = "0000000000.html";
-
-        public static void WriteReferencesNotFoundFile(string folder)
+        public static void WriteRedirectFile(IO.ProjectManager ioManager)
         {
-            string html = @"<!DOCTYPE html>
-<html><head><link rel=""stylesheet"" href=""styles.css""/></head>
-<body><div class=""rH"">No references found</div></body></html>";
-            string filePath = Path.Combine(folder, zeroFileName);
-            if (!File.Exists(filePath))
+            if (ioManager.ReferenceDirExists())
             {
-                File.WriteAllText(filePath, html, Encoding.UTF8);
-            }
-        }
-
-        public static void WriteRedirectFile(string projectFolder)
-        {
-            string referencesFolder = Path.Combine(projectFolder, Constants.ReferencesFileName);
-            string redirectFileName = Path.Combine(projectFolder, Constants.IDResolvingFileName + ".html");
-            if (Directory.Exists(referencesFolder) && !File.Exists(redirectFileName))
-            {
-                string contents = @"<!DOCTYPE html>
+                ioManager.WriteIDResolvingFileOnce(sb =>
+                {
+                    string contents = @"<!DOCTYPE html>
 <html>
 <head>
 <title>Redirecting...</title>
@@ -150,8 +135,8 @@ redirectToReferences();
 <div class=""note"">Assembly is not indexed. References to the symbol in the indexed assemblies are shown to the left.</div>
 </body>
 </html>";
-                contents = string.Format(contents, Path.GetFileName(projectFolder));
-                File.WriteAllText(redirectFileName, contents, Encoding.UTF8);
+                    sb.Append(string.Format(contents, ioManager.AssemblyId));
+                });
             }
         }
 
@@ -207,7 +192,7 @@ redirectToReferences();
             return @"</pre></td></tr></table></div></body></html>";
         }
 
-        public static void WriteMetadataToSourceRedirectPrefix(StreamWriter writer)
+        public static void WriteMetadataToSourceRedirectPrefix(System.IO.StreamWriter writer)
         {
             string contents = @"<!DOCTYPE html>
 <html><head><title>Redirecting...</title><script src=""../scripts.js""></script>
@@ -216,7 +201,7 @@ redirectToReferences();
             writer.WriteLine(contents);
         }
 
-        public static void WriteMetadataToSourceRedirectSuffix(StreamWriter writer)
+        public static void WriteMetadataToSourceRedirectSuffix(System.IO.StreamWriter writer)
         {
             string contents = @"
 </script>
@@ -255,7 +240,7 @@ Don't use this page directly, pass #symbolId to get redirected.
             sb.AppendLine("<script>initializeProjectExplorer();</script></body></html>");
         }
 
-        public static void WriteSolutionExplorerPrefix(TextWriter writer)
+        public static void WriteSolutionExplorerPrefix(System.IO.TextWriter writer)
         {
             writer.WriteLine(@"<!DOCTYPE html><html><head><title>Solution Explorer</title><link rel=""stylesheet"" href=""styles.css"" /><script src=""scripts.js""></script></head>
 <body class=""solutionExplorerBody"">
@@ -267,12 +252,12 @@ Don't use this page directly, pass #symbolId to get redirected.
 <div id=""rootFolder"" style=""display: none;"" class=""folderTitle"">");
         }
 
-        public static void WriteSolutionExplorerSuffix(TextWriter writer)
+        public static void WriteSolutionExplorerSuffix(System.IO.TextWriter writer)
         {
             writer.WriteLine("</div><script>onSolutionExplorerLoad();</script></body></html>");
         }
 
-        public static void WriteNamespaceExplorerPrefix(string assemblyName, StreamWriter sw, string pathPrefix = "")
+        public static void WriteNamespaceExplorerPrefix(string assemblyName, System.IO.StreamWriter sw, string pathPrefix = "")
         {
             sw.WriteLine(string.Format(@"<!DOCTYPE html><html><head><title>Namespaces</title>
 <link rel=""stylesheet"" href=""{0}styles.css"">
@@ -282,7 +267,7 @@ Don't use this page directly, pass #symbolId to get redirected.
 ", pathPrefix, assemblyName));
         }
 
-        public static void WriteNamespaceExplorerSuffix(StreamWriter sw)
+        public static void WriteNamespaceExplorerSuffix(System.IO.StreamWriter sw)
         {
             sw.WriteLine(@"<script>initializeNamespaceExplorer();</script></body></html>");
         }
@@ -295,17 +280,17 @@ Don't use this page directly, pass #symbolId to get redirected.
 </head><body></body></html>", assemblyName);
         }
 
-        public static void GenerateResultsHtml(string solutionDestinationFolder)
+        public static void GenerateResultsHtml(IO.SolutionManager ioManager)
         {
             var sb = new StringBuilder();
 
             sb.AppendLine(GetResultsHtmlPrefix());
             sb.AppendLine(GetResultsHtmlSuffix(emitSolutionBrowserLink: false));
 
-            File.WriteAllText(Path.Combine(solutionDestinationFolder, "results.html"), sb.ToString());
+            ioManager.WriteResults(sb.ToString());
         }
 
-        public static void GenerateResultsHtmlWithAssemblyList(string solutionDestinationFolder, IEnumerable<string> assemblyList)
+        public static void GenerateResultsHtmlWithAssemblyList(IO.SolutionManager ioManager, IEnumerable<string> assemblyList)
         {
             var sb = new StringBuilder();
 
@@ -320,7 +305,7 @@ Don't use this page directly, pass #symbolId to get redirected.
 
             sb.AppendLine(GetResultsHtmlSuffix(emitSolutionBrowserLink: true));
 
-            File.WriteAllText(Path.Combine(solutionDestinationFolder, "results.html"), sb.ToString());
+            ioManager.WriteResults(sb.ToString());
         }
 
         public static string GetResultsHtmlPrefix()
@@ -352,26 +337,6 @@ Enter a type or member name or <a href=""/#q=assembly%20"" target=""_top"" class
 </head><body><div class=""partialTypeHeader"">Partial Type</div>
 {1}
 </body></html>";
-
-        public static void GeneratePartialTypeDisambiguationFile(
-            string solutionDestinationFolder,
-            string projectDestinationFolder,
-            string symbolId,
-            IEnumerable<string> filePaths)
-        {
-            string partialFolder = Path.Combine(projectDestinationFolder, Constants.PartialResolvingFileName);
-            Directory.CreateDirectory(partialFolder);
-            var disambiguationFileName = Path.Combine(partialFolder, symbolId) + ".html";
-            string list = string.Join(Environment.NewLine,
-                filePaths
-                .OrderBy(filePath => Paths.StripExtension(filePath))
-                .Select(filePath => "<a href=\"../" + filePath + ".html#" + symbolId + "\"><div class=\"partialTypeLink\">" + filePath + "</div></a>"));
-            string content = string.Format(
-                partialTypeDisambiguationFileTemplate,
-                Paths.GetCssPathFromFile(solutionDestinationFolder, disambiguationFileName),
-                list);
-            File.WriteAllText(disambiguationFileName, content, Encoding.UTF8);
-        }
 
         public static string EscapeSemicolons(string text)
         {
@@ -424,7 +389,7 @@ Enter a type or member name or <a href=""/#q=assembly%20"" target=""_top"" class
             return sb.ToString();
         }
 
-        public static void WriteSymbol(DeclaredSymbolInfo symbol, StringBuilder sb)
+        public static void WriteSymbol(Common.Entity.DeclaredSymbolInfo symbol, StringBuilder sb)
         {
             var url = symbol.GetUrl();
             sb.AppendFormat("<a href=\"{0}\" target=\"s\"><div class=\"resultItem\" onClick=\"resultClick(this);\">", url);
@@ -438,7 +403,7 @@ Enter a type or member name or <a href=""/#q=assembly%20"" target=""_top"" class
             sb.AppendLine("</div></a>");
         }
 
-        private static string GetGlyph(DeclaredSymbolInfo symbol)
+        private static string GetGlyph(Common.Entity.DeclaredSymbolInfo symbol)
         {
             var result = symbol.Glyph;
             if (result == 196)

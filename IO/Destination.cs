@@ -8,6 +8,11 @@ namespace Microsoft.SourceBrowser.IO
 {
     public class Destination
     {
+        public Destination(string fileName)
+        : this(new string[0], fileName)
+        {
+
+        }
         public Destination(string[] folders, string fileName)
         {
             Folders = folders;
@@ -19,6 +24,24 @@ namespace Microsoft.SourceBrowser.IO
         public override string ToString()
         {
             return System.IO.Path.Combine(Folders.Concat(new string[] { FileName }).ToArray());
+        }
+
+        public override bool Equals(object obj)
+        {
+            return
+            (obj is Destination) &&
+            ((Destination)obj).FileName == FileName &&
+            ((Destination)obj).Folders.SequenceEqual(Folders);
+        }
+
+        public override int GetHashCode()
+        {
+            return AggregateHashCodes(FileName.GetHashCode(), Folders.Select(f => f.GetHashCode()));
+        }
+
+        private int AggregateHashCodes(int hash, IEnumerable<int> otherHashes)
+        {
+            return otherHashes.Aggregate(hash, (a, b) => Tuple.Create(a, b).GetHashCode());
         }
     }
 }

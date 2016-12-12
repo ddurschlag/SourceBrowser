@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -22,7 +21,7 @@ namespace Microsoft.SourceBrowser.Common
         public Node root;
         public List<bool>[,] table;
 
-        private Huffman(Node root)
+        public Huffman(Node root)
         {
             this.root = root;
             CreateTable();
@@ -356,88 +355,25 @@ namespace Microsoft.SourceBrowser.Common
                     table[from - Huffman.MinChar, to - Huffman.MinChar] = new List<bool>(bitVector);
                 }
             }
-        }
 
-        public static Huffman Read(string huffmanFile)
-        {
-            using (var fileStream = new FileStream(
-                huffmanFile,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.None,
-                262144,
-                FileOptions.SequentialScan))
-            using (var reader = new BinaryReader(fileStream))
+            public void Accept(Visitor v)
             {
-                var node = ReadNode(reader);
-                var result = new Huffman(node);
-                return result;
-            }
-        }
-
-        private static Node ReadNode(BinaryReader reader)
-        {
-            var stack = new Stack<Node>();
-            while (true)
-            {
-                int readByte = reader.BaseStream.ReadByte();
-                if (readByte == -1)
-                {
-                    return stack.Pop();
-                }
-
-                byte b = (byte)readByte;
-                if (b == byte.MaxValue)
-                {
-                    if (stack.Count > 1)
-                    {
-                        var right = stack.Pop();
-                        var left = stack.Pop();
-                        Node newNode = new Node(left, right);
-                        stack.Push(newNode);
-                    }
-                    else
-                    {
-                        return stack.Pop();
-                    }
-                }
+                if (IsLeaf)
+                    v.VisitLeaf(this);
                 else
-                {
-                    byte to = reader.ReadByte();
-                    Node newNode = new Node(0, b, to);
-                    stack.Push(newNode);
-                }
+                    v.VisitBranch(this);
             }
         }
 
-        public void Write(string huffmanFile)
+        public abstract class Visitor
         {
-            using (var fileStream = new FileStream(
-                huffmanFile,
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.None,
-                262144,
-                FileOptions.SequentialScan))
-            using (var writer = new BinaryWriter(fileStream))
+            public void Visit(Node n)
             {
-                Write(writer, this.root);
+                n.Accept(this);
             }
-        }
 
-        private void Write(BinaryWriter writer, Node node)
-        {
-            if (node.IsLeaf)
-            {
-                writer.Write(node.from);
-                writer.Write(node.to);
-            }
-            else
-            {
-                Write(writer, node.left);
-                Write(writer, node.right);
-                writer.Write(byte.MaxValue);
-            }
+            public  abstract void VisitLeaf(Node n);
+            public abstract void VisitBranch(Node n);
         }
     }
 }

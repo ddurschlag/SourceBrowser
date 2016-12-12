@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace Microsoft.SourceBrowser.HtmlGenerator
+﻿namespace Microsoft.SourceBrowser.HtmlGenerator
 {
     public class XamlSupport : XmlSupport
     {
@@ -15,7 +13,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         internal void GenerateXaml(string sourceXmlFile, string destinationHtmlFile, string relativePath)
         {
             this.relativePath = relativePath;
-            base.Generate(sourceXmlFile, destinationHtmlFile, projectGenerator.SolutionGenerator.SolutionDestinationFolder);
+            base.Generate(sourceXmlFile, destinationHtmlFile, projectGenerator.SolutionGenerator.SolutionDestinationFolder, projectGenerator.IOManager);
         }
 
         protected override string GetAssemblyName()

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -32,77 +32,12 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
         }
 
-        public static HashSet<string> LoadProcessedAssemblies()
-        {
-            HashSet<string> processed = null;
-            if (File.Exists(Paths.ProcessedAssemblies))
-            {
-                processed = new HashSet<string>(File.ReadAllLines(Paths.ProcessedAssemblies), StringComparer.OrdinalIgnoreCase);
-            }
-            else
-            {
-                processed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            }
-
-            return processed;
-        }
-
         public static string AssemblyPathsFile
         {
             get
             {
                 return Path.Combine(Microsoft.SourceBrowser.Common.Paths.BaseAppFolder, Constants.AssemblyPaths);
             }
-        }
-
-        public static void PrepareDestinationFolder(bool? forceOverwrite = null, bool? forceContinue = null)
-        {
-            if (!Configuration.CreateFoldersOnDisk &&
-                !Configuration.WriteDocumentsToDisk &&
-                !Configuration.WriteProjectAuxiliaryFilesToDisk)
-            {
-                return;
-            }
-
-            if (Directory.Exists(SolutionDestinationFolder))
-            {
-                if (!forceOverwrite.HasValue)
-                {
-                    Log.Write(string.Format("Warning, {0} will be deleted! Are you sure? (y/n)", SolutionDestinationFolder), ConsoleColor.Red);
-                    forceOverwrite = Console.ReadKey().KeyChar == 'y';
-                }
-                if (!forceOverwrite.Value)
-                {
-                    if (!File.Exists(Paths.ProcessedAssemblies))
-                    {
-                        Environment.Exit(0);
-                    }
-
-                    if (!forceContinue.HasValue)
-                    {
-                        Log.Write("Would you like to continue previously aborted index operation where it left off?", ConsoleColor.Green);
-                        forceContinue = Console.ReadKey().KeyChar == 'y';
-                    }
-                    if (!forceContinue.Value)
-                    {
-                        Environment.Exit(0);
-                    }
-                    else
-                    {
-                        return;
-                    }
-                }
-                else
-                {
-                    Console.WriteLine();
-                }
-
-
-                Log.Write("Deleting " + SolutionDestinationFolder);
-                Directory.Delete(SolutionDestinationFolder, recursive: true);
-            }
-
-            Directory.CreateDirectory(SolutionDestinationFolder);
         }
 
         /// <summary>

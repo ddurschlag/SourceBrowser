@@ -4,6 +4,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Classification;
 using Microsoft.SourceBrowser.Common;
+using Microsoft.SourceBrowser.Common.Entity;
 
 namespace Microsoft.SourceBrowser.HtmlGenerator
 {

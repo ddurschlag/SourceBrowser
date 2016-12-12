@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.Build.Evaluation;
 using Microsoft.Language.Xml;
 using Microsoft.SourceBrowser.Common;
+using Microsoft.SourceBrowser.Common.Entity;
 
 namespace Microsoft.SourceBrowser.HtmlGenerator
 {
@@ -48,7 +49,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             this.project = project;
             this.isRootProject = isRootProject;
-            base.Generate(localFileSystemFilePath, htmlFilePath, SolutionDestinationFolder);
+            base.Generate(localFileSystemFilePath, htmlFilePath, SolutionDestinationFolder, projectGenerator.IOManager);
         }
 
         protected override string GetAssemblyName()

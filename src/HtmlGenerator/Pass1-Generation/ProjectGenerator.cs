@@ -173,9 +173,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     GenerateBaseMembers();
                     GenerateImplementedInterfaceMembers();
                     GenerateProjectInfo();
-                    GenerateReferencesDataFiles(
-                        this.SolutionGenerator.SolutionDestinationFolder,
-                        ReferencesByTargetAssemblyAndSymbolId);
+                    GenerateReferencesDataFiles();
                     GenerateSymbolIDToListOfDeclarationLocationsMap(SymbolIDToListOfLocationsMap);
                     GenerateReferencedAssemblyList();
                     GenerateUsedReferencedAssemblyList();
@@ -203,8 +201,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             Log.Write("Namespace Explorer...");
             var symbols = this.DeclaredSymbols.Keys.OfType<INamedTypeSymbol>()
-                .Select(s => new DeclaredSymbolInfo(s, this.AssemblyName));
-            NamespaceExplorer.WriteNamespaceExplorer(this.AssemblyName, symbols, ProjectDestinationFolder);
+                .Select(s => new Utilities.DeclaredSymbolInfoFactory().Manufacture(s, this.AssemblyName));
+            new NamespaceExplorer(this.AssemblyName, IOManager).WriteNamespaceExplorer(symbols);
         }
 
         private Task GenerateDocument(Document document)

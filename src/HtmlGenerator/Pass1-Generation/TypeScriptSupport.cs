@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Text;
 using Microsoft.SourceBrowser.Common;
 using Newtonsoft.Json;
+using Microsoft.SourceBrowser.Common.Entity;
 
 namespace Microsoft.SourceBrowser.HtmlGenerator
 {
@@ -15,9 +16,12 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         private Dictionary<string, List<Reference>> references;
         private List<string> declarations;
         public SymbolIndex SymbolIDToListOfLocationsMap { get; private set; }
+        private IO.ProjectManager IOManager;
 
-        public void Generate(IEnumerable<string> typeScriptFiles, string solutionDestinationFolder)
+        public void Generate(IEnumerable<string> typeScriptFiles, string solutionDestinationFolder, IO.SolutionManager solutionManager)
         {
+            IOManager = solutionManager.GetProjectManager(Constants.TypeScriptFiles);
+
             if (typeScriptFiles == null || !typeScriptFiles.Any())
             {
                 return;
@@ -62,73 +66,20 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 return;
             }
 
-            ProjectGenerator.GenerateReferencesDataFilesToAssembly(
-                Paths.SolutionDestinationFolder,
-                Constants.TypeScriptFiles,
-                references);
+            IOManager.AppendReferences(references);
 
             declarations.Sort();
 
-            Serialization.WriteDeclaredSymbols(
-                projectDestinationFolder,
-                declarations);
-
-            new IO.SolutionManager(solutionDestinationFolder)
-                .GetProjectManager(Constants.TypeScriptFiles)
-                .WriteDeclarationsMap(SymbolIDToListOfLocationsMap);
+            IOManager.WriteDeclaredSymbols(declarations);
+            IOManager.WriteDeclarationsMap(SymbolIDToListOfLocationsMap);
         }
 
         private void GenerateCore(IEnumerable<string> fileNames, string libFile)
         {
-            var output = Path.Combine(Common.Paths.BaseAppFolder, "output");
-            if (Directory.Exists(output))
+            foreach (var text in IOManager.CallTypescriptAnalyzer(JsonConvert.SerializeObject(new { fileNames, libFile })))
             {
-                Directory.Delete(output, recursive: true);
-            }
-
-            var json = JsonConvert.SerializeObject(new { fileNames, libFile });
-            var argumentsJson = Path.Combine(Common.Paths.BaseAppFolder, "TypeScriptAnalyzerArguments.json");
-            File.WriteAllText(argumentsJson, json);
-
-            var analyzerJs = Path.Combine(Common.Paths.BaseAppFolder, @"TypeScriptSupport\analyzer.js");
-            var arguments = string.Format("\"{0}\" {1}", analyzerJs, argumentsJson);
-
-            ProcessLaunchService.ProcessRunResult result;
-            try
-            {
-                using (Disposable.Timing("Calling Node.js to process TypeScript"))
-                {
-                    result = new ProcessLaunchService().RunAndRedirectOutput("node", arguments);
-                }
-            }
-            catch (Win32Exception)
-            {
-                Log.Write("Warning: Node.js is required to generate TypeScript files. Skipping generation. Download Node.js from https://nodejs.org.", ConsoleColor.Yellow);
-                Log.Exception("Node.js is not installed.");
-                return;
-            }
-
-            using (Disposable.Timing("Generating TypeScript files"))
-            {
-                foreach (var file in Directory.GetFiles(output))
-                {
-                    if (Path.GetFileNameWithoutExtension(file) == "ok")
-                    {
-                        continue;
-                    }
-
-                    if (Path.GetFileNameWithoutExtension(file) == "error")
-                    {
-                        var errorContent = File.ReadAllText(file);
-                        Log.Exception(DateTime.Now.ToString() + " " + errorContent);
-                        return;
-                    }
-
-                    var text = File.ReadAllText(file);
-                    AnalyzedFile analysis = JsonConvert.DeserializeObject<AnalyzedFile>(text);
-
-                    EnsureFileGeneratedAndGetUrl(analysis);
-                }
+                AnalyzedFile analysis = JsonConvert.DeserializeObject<AnalyzedFile>(text);
+                EnsureFileGeneratedAndGetUrl(analysis);
             }
         }
 
@@ -139,10 +90,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             string destinationFilePath = GetDestinationFilePath(localFileSystemPath);
 
-            if (!File.Exists(destinationFilePath))
-            {
-                Generate(localFileSystemPath, destinationFilePath, analysis.syntacticClassifications, analysis.semanticClassifications);
-            }
+            Generate(localFileSystemPath, destinationFilePath, analysis.syntacticClassifications, analysis.semanticClassifications);
         }
 
         public static string GetDestinationFilePath(string sourceFilePath)
@@ -168,53 +116,51 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             ClassifiedRange[] syntacticRanges,
             ClassifiedRange[] semanticRanges)
         {
-            Log.Write(destinationHtmlFilePath);
-            var sb = new StringBuilder();
-
-            var lines = File.ReadAllLines(sourceFilePath);
-            var text = File.ReadAllText(sourceFilePath);
-            var lineCount = lines.Length;
-            var lineLengths = TextUtilities.GetLineLengths(text);
-
-            var ranges = PrepareRanges(syntacticRanges, semanticRanges, text);
-
-            var relativePathToRoot = Paths.CalculateRelativePathToRoot(destinationHtmlFilePath, Paths.SolutionDestinationFolder);
-
-            var prefix = Markup.GetDocumentPrefix(Path.GetFileName(sourceFilePath), relativePathToRoot, lineCount, "ix");
-            sb.Append(prefix);
-
-            var displayName = GetDisplayName(destinationHtmlFilePath);
-            var assemblyName = "TypeScriptFiles";
-
-            var url = "/#" + assemblyName + "/" + displayName.Replace('\\', '/');
-            displayName = @"\\" + displayName;
-
-            var file = string.Format("File: <a id=\"filePath\" class=\"blueLink\" href=\"{0}\" target=\"_top\">{1}</a><br/>", url, displayName);
-            var row = string.Format("<tr><td>{0}</td></tr>", file);
-            Markup.WriteLinkPanel(s => sb.AppendLine(s), row);
-
-            // pass a value larger than 0 to generate line numbers statically at HTML generation time
-            var table = Markup.GetTablePrefix();
-            sb.AppendLine(table);
-
-            var localSymbolIdMap = new Dictionary<string, int>();
-
-            foreach (var range in ranges)
+            IOManager.WriteOnce(destinationHtmlFilePath, sb =>
             {
-                range.lineNumber = TextUtilities.GetLineNumber(range.start, lineLengths);
-                var line = TextUtilities.GetLineFromPosition(range.start, text);
-                range.column = range.start - line.Item1;
-                range.lineText = text.Substring(line.Item1, line.Item2);
 
-                GenerateRange(sb, range, destinationHtmlFilePath, localSymbolIdMap);
-            }
+                Log.Write(destinationHtmlFilePath);
+                
+                var text = IOManager.GetFileText(sourceFilePath);
+                var lineCount = IOManager.GetFileLineCount(sourceFilePath);
+                var lineLengths = TextUtilities.GetLineLengths(text);
 
-            var suffix = Markup.GetDocumentSuffix();
-            sb.AppendLine(suffix);
+                var ranges = PrepareRanges(syntacticRanges, semanticRanges, text);
 
-            var folder = Path.GetDirectoryName(destinationHtmlFilePath);
-            Directory.CreateDirectory(folder);
-            File.WriteAllText(destinationHtmlFilePath, sb.ToString());
+                var relativePathToRoot = Paths.CalculateRelativePathToRoot(destinationHtmlFilePath, Paths.SolutionDestinationFolder);
+
+                var prefix = Markup.GetDocumentPrefix(Path.GetFileName(sourceFilePath), relativePathToRoot, lineCount, "ix");
+                sb.Append(prefix);
+
+                var displayName = GetDisplayName(destinationHtmlFilePath);
+                var assemblyName = "TypeScriptFiles";
+
+                var url = "/#" + assemblyName + "/" + displayName.Replace('\\', '/');
+                displayName = @"\\" + displayName;
+
+                var file = string.Format("File: <a id=\"filePath\" class=\"blueLink\" href=\"{0}\" target=\"_top\">{1}</a><br/>", url, displayName);
+                var row = string.Format("<tr><td>{0}</td></tr>", file);
+                Markup.WriteLinkPanel(s => sb.AppendLine(s), row);
+
+                // pass a value larger than 0 to generate line numbers statically at HTML generation time
+                var table = Markup.GetTablePrefix();
+                sb.AppendLine(table);
+
+                var localSymbolIdMap = new Dictionary<string, int>();
+
+                foreach (var range in ranges)
+                {
+                    range.lineNumber = TextUtilities.GetLineNumber(range.start, lineLengths);
+                    var line = TextUtilities.GetLineFromPosition(range.start, text);
+                    range.column = range.start - line.Item1;
+                    range.lineText = text.Substring(line.Item1, line.Item2);
+
+                    GenerateRange(sb, range, destinationHtmlFilePath, localSymbolIdMap);
+                }
+
+                var suffix = Markup.GetDocumentSuffix();
+                sb.AppendLine(suffix);
+            });
         }
 
         public static ClassifiedRange[] PrepareRanges(

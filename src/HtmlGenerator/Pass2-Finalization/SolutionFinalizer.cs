@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -19,14 +19,16 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         public string SolutionDestinationFolder;
         public IEnumerable<ProjectFinalizer> projects;
         public readonly Dictionary<string, ProjectFinalizer> assemblyNameToProjectMap = new Dictionary<string, ProjectFinalizer>();
+        public IO.SolutionManager IOManager;
 
-        public SolutionFinalizer(string rootPath)
+        public SolutionFinalizer(string rootPath, IO.SolutionManager ioManager)
         {
             this.SolutionDestinationFolder = rootPath;
+            IOManager = ioManager;
             this.projects = DiscoverProjects()
                             .OrderBy(p => p.AssemblyId, StringComparer.OrdinalIgnoreCase)
                             .ToArray();
-            CalculateReferencingAssemblies();
+            //CalculateReferencingAssemblies();
         }
 
         private void CalculateReferencingAssemblies()
@@ -59,27 +61,29 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     .Take(100)
                     .ToArray();
 
-                var filePath = Path.Combine(this.SolutionDestinationFolder, Constants.TopReferencedAssemblies + ".txt");
-                File.WriteAllLines(filePath, mostReferencedProjects);
+                //todo: This should be logging
+                //var filePath = Path.Combine(this.SolutionDestinationFolder, Constants.TopReferencedAssemblies + ".txt");
+                //File.WriteAllLines(filePath, mostReferencedProjects);
             }
         }
 
         private IEnumerable<ProjectFinalizer> DiscoverProjects()
         {
-            var directories = Directory.GetDirectories(SolutionDestinationFolder);
-            foreach (var directory in directories)
+            //var directories = Directory.GetDirectories(SolutionDestinationFolder);
+            //foreach (var directory in directories)
+            foreach (var pm in IOManager.ProjectManagers)
             {
-                var referenceDirectory = Path.Combine(directory, Constants.ReferencesFileName);
-                if (Directory.Exists(referenceDirectory))
+                //                if (Directory.Exists(referenceDirectory))
+                if (pm.ReferenceDirExists())
                 {
                     ProjectFinalizer finalizer = null;
                     try
                     {
-                        finalizer = new ProjectFinalizer(this, directory);
+                        finalizer = new ProjectFinalizer(this, pm);
                     }
                     catch (Exception ex)
                     {
-                        Log.Exception(ex, "Failure when creating a ProjectFinalizer for " + directory);
+                        Log.Exception(ex, "Failure when creating a ProjectFinalizer for " + pm.AssemblyId);
                         finalizer = null;
                     }
 
@@ -93,14 +97,14 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         public void FinalizeProjects(bool emitAssemblyList, Federation federation, Folder<Project> solutionExplorerRoot = null)
         {
-            SortProcessedAssemblies();
+            IO.Utility.SortLines(Paths.ProcessedAssemblies);
             WriteSolutionExplorer(solutionExplorerRoot);
             CreateReferencesFiles();
-            CreateMasterDeclarationsIndex();
+            IOManager.CreateMasterDeclarationsIndex(this.projects.Select(p => p.DeclaredSymbols.Values));
             CreateProjectMap();
             CreateReferencingProjectLists();
             WriteAggregateStats();
-            DeployFilesToRoot(SolutionDestinationFolder, emitAssemblyList, federation);
+            IO.Utility.DeployFilesToRoot(SolutionDestinationFolder, emitAssemblyList, federation.GetServers());
 
             if (emitAssemblyList)
             {
@@ -111,25 +115,25 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 var sorter = GetCustomRootSorter();
                 assemblyNames.Sort(sorter);
 
-                Markup.GenerateResultsHtmlWithAssemblyList(SolutionDestinationFolder, assemblyNames);
+                Markup.GenerateResultsHtmlWithAssemblyList(IOManager, assemblyNames);
             }
             else
             {
-                Markup.GenerateResultsHtml(SolutionDestinationFolder);
+                Markup.GenerateResultsHtml(IOManager);
             }
         }
 
-        private Comparison<string> GetCustomRootSorter()
+        private static Comparison<string> GetCustomRootSorter()
         {
             var file = Path.Combine(
                 Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
                 "AssemblySortOrder.txt");
-            if (!File.Exists(file))
+            if (!System.IO.File.Exists(file))
             {
                 return (l, r) => StringComparer.OrdinalIgnoreCase.Compare(l, r);
             }
 
-            var lines = File
+            var lines = System.IO.File
                 .ReadAllLines(file)
                 .Select((assemblyName, index) => new KeyValuePair<string, int>(assemblyName, index + 1))
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
@@ -150,111 +154,19 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             };
         }
 
-        public static void SortProcessedAssemblies()
-        {
-            if (File.Exists(Paths.ProcessedAssemblies))
-            {
-                var lines = File.ReadAllLines(Paths.ProcessedAssemblies);
-                Array.Sort(lines, StringComparer.OrdinalIgnoreCase);
-                File.WriteAllLines(Paths.ProcessedAssemblies, lines);
-            }
-        }
-
         private void CreateReferencingProjectLists()
         {
             using (Disposable.Timing("Writing referencing assemblies"))
             {
                 foreach (var project in this.projects)
                 {
-                    if (project.ReferencingAssemblies.Count > 0 && project.ReferencingAssemblies.Count < 100)
-                    {
-                        var fileName = Path.Combine(project.ProjectDestinationFolder, Constants.ReferencingAssemblyList + ".txt");
-                        File.WriteAllLines(fileName, project.ReferencingAssemblies);
-                        PatchProjectExplorer(project);
-                    }
+                    project.CreateReferencingProjectList();
                 }
             }
-        }
-
-        private void PatchProjectExplorer(ProjectFinalizer project)
-        {
-            if (project.ReferencingAssemblies.Count == 0 || project.ReferencingAssemblies.Count > 100)
-            {
-                return;
-            }
-
-            var fileName = Path.Combine(project.ProjectDestinationFolder, Constants.ProjectExplorer + ".html");
-            if (!File.Exists(fileName))
-            {
-                return;
-            }
-
-            var sourceLines = File.ReadAllLines(fileName);
-
-            //Check if already patched -- if so, skip it
-            if (sourceLines.Length > 0 && sourceLines[0].Equals(PATCH_MARKER))
-                return;
-
-            List<string> lines = new List<string>(sourceLines.Length + project.ReferencingAssemblies.Count + 3);
-
-            //Add marker to indicate this file has already been patched
-            lines.Add(PATCH_MARKER);
-
-            RelativeState state = RelativeState.Before;
-            foreach (var sourceLine in sourceLines)
-            {
-                switch (state)
-                {
-                    case RelativeState.Before:
-                        if (sourceLine == "<div class=\"folderTitle\">References</div><div class=\"folder\">")
-                        {
-                            state = RelativeState.Inside;
-                        }
-
-                        break;
-                    case RelativeState.Inside:
-                        if (sourceLine == "</div>")
-                        {
-                            state = RelativeState.InsertionPoint;
-                        }
-
-                        break;
-                    case RelativeState.InsertionPoint:
-                        lines.Add("<div class=\"folderTitle\">Used By</div><div class=\"folder\">");
-
-                        foreach (var referencingAssembly in project.ReferencingAssemblies)
-                        {
-                            string referenceHtml = Markup.GetProjectExplorerReference("/#" + referencingAssembly, referencingAssembly);
-                            lines.Add(referenceHtml);
-                        }
-
-                        lines.Add("</div>");
-
-                        state = RelativeState.After;
-                        break;
-                    case RelativeState.After:
-                        break;
-                    default:
-                        break;
-                }
-
-                lines.Add(sourceLine);
-            }
-
-            File.WriteAllLines(fileName, lines);
-        }
-
-        private enum RelativeState
-        {
-            Before,
-            Inside,
-            InsertionPoint,
-            After
         }
 
         private void WriteAggregateStats()
         {
-            string masterIndexFile = Path.Combine(SolutionDestinationFolder, Constants.ProjectInfoFileName + ".txt");
             var sb = new StringBuilder();
 
             long totalProjects = 0;
@@ -283,8 +195,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             sb.AppendLine("DeclaredSymbols=" + totalDeclaredSymbolCount.WithThousandSeparators());
             sb.AppendLine("DeclaredTypes=" + totalDeclaredTypeCount.WithThousandSeparators());
             sb.AppendLine("PublicTypes=" + totalPublicTypeCount.WithThousandSeparators());
-
-            File.WriteAllText(masterIndexFile, sb.ToString(), Encoding.UTF8);
+            IOManager.WriteAggregateStats(sb.ToString());
         }
 
         private void CreateReferencesFiles()
@@ -305,158 +216,19 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 });
         }
 
-        private void DeployFilesToRoot(
-            string destinationFolder,
-            bool emitAssemblyList,
-            Federation federation)
-        {
-            Markup.WriteReferencesNotFoundFile(destinationFolder);
-
-            string sourcePath = Assembly.GetEntryAssembly().Location;
-            sourcePath = Path.GetDirectoryName(sourcePath);
-            string basePath = sourcePath;
-            sourcePath = Path.Combine(sourcePath, @"Web");
-            if (!Directory.Exists(sourcePath))
-            {
-                return;
-            }
-
-            sourcePath = Path.GetFullPath(sourcePath);
-            FileUtilities.CopyDirectory(sourcePath, destinationFolder);
-
-            StampOverviewHtmlWithDate(destinationFolder);
-            if (emitAssemblyList)
-            {
-                ToggleSolutionExplorerOff(destinationFolder);
-            }
-
-            SetExternalUrlMap(destinationFolder, federation);
-
-            DeployBin(basePath, destinationFolder);
-        }
-
-        private void StampOverviewHtmlWithDate(string destinationFolder)
-        {
-            var overviewHtml = Path.Combine(destinationFolder, "overview.html");
-            if (File.Exists(overviewHtml))
-            {
-                var text = File.ReadAllText(overviewHtml);
-                text = StampOverviewHtmlText(text);
-                File.WriteAllText(overviewHtml, text);
-            }
-        }
-
-        private string StampOverviewHtmlText(string text)
-        {
-            text = text.Replace("$(Date)", DateTime.Today.ToString("MMMM d", CultureInfo.InvariantCulture));
-            return text;
-        }
-
-        private void ToggleSolutionExplorerOff(string destinationFolder)
-        {
-            var scriptsJs = Path.Combine(destinationFolder, "scripts.js");
-            if (File.Exists(scriptsJs))
-            {
-                var text = File.ReadAllText(scriptsJs);
-                text = text.Replace("/*USE_SOLUTION_EXPLORER*/true/*USE_SOLUTION_EXPLORER*/", "false");
-                File.WriteAllText(scriptsJs, text);
-            }
-        }
-
-        private void SetExternalUrlMap(string destinationFolder, Federation federation)
-        {
-            var scriptsJs = Path.Combine(destinationFolder, "scripts.js");
-            if (File.Exists(scriptsJs))
-            {
-                var sb = new StringBuilder();
-                foreach (var server in federation.GetServers())
-                {
-                    if (sb.Length > 0)
-                    {
-                        sb.Append(",");
-                    }
-
-                    sb.Append("\"");
-                    sb.Append(server);
-                    sb.Append("\"");
-                }
-
-                if (sb.Length > 0)
-                {
-                    var text = File.ReadAllText(scriptsJs);
-                    text = Regex.Replace(text, @"/\*EXTERNAL_URL_MAP\*/.*/\*EXTERNAL_URL_MAP\*/", sb.ToString());
-                    File.WriteAllText(scriptsJs, text);
-                }
-            }
-        }
-
-        private void DeployBin(string sourcePath, string destinationFolder)
-        {
-            var files = new[]
-            {
-                "Microsoft.SourceBrowser.Common.dll",
-                "Microsoft.SourceBrowser.SourceIndexServer.dll",
-                "Microsoft.Web.Infrastructure.dll",
-                "Newtonsoft.Json.dll",
-                "System.Net.Http.Formatting.dll",
-                "System.Web.Helpers.dll",
-                "System.Web.Http.dll",
-                "System.Web.Http.WebHost.dll",
-                "System.Web.Mvc.dll",
-                "System.Web.Razor.dll",
-                "System.Web.WebPages.dll",
-                "System.Web.WebPages.Deployment.dll",
-                "System.Web.WebPages.Razor.dll",
-            };
-
-            foreach (var file in files)
-            {
-                FileUtilities.CopyFile(
-                    Path.Combine(sourcePath, file),
-                    Path.Combine(destinationFolder, "bin", file));
-            }
-        }
-
         public void CreateProjectMap(string outputPath = null)
         {
-            var projects = this.projects
-                // can't exclude assemblies without project because symbols rely on assembly index
-                // and they just take the index from this.projects (see below)
-                //.Where(p => p.ProjectInfoLine != null) 
-                .ToArray();
-            Serialization.WriteProjectMap(
-                outputPath ?? SolutionDestinationFolder,
+            //This is already an array...
+            //var projects = this.projects
+            //    // can't exclude assemblies without project because symbols rely on assembly index
+            //    // and they just take the index from this.projects (see below)
+            //    //.Where(p => p.ProjectInfoLine != null) 
+            //    .ToArray();
+
+            IOManager.WriteProjectMap(
                 projects.Select(p => Tuple.Create(p.AssemblyId, p.ProjectInfoLine)),
-                projects.ToDictionary(p => p.AssemblyId, p => p.ReferencingAssemblies.Count));
-        }
-
-        public void CreateMasterDeclarationsIndex(string outputPath = null)
-        {
-            var declaredSymbols = new List<DeclaredSymbolInfo>();
-            ////var declaredTypes = new List<DeclaredSymbolInfo>();
-
-            using (Measure.Time("Merging declared symbols"))
-            {
-                ushort assemblyNumber = 0;
-                foreach (var project in this.projects)
-                {
-                    foreach (var symbolInfo in project.DeclaredSymbols.Values)
-                    {
-                        symbolInfo.AssemblyNumber = assemblyNumber;
-                        declaredSymbols.Add(symbolInfo);
-
-                        ////if (SymbolKindText.IsType(symbolInfo.Kind))
-                        ////{
-                        ////    declaredTypes.Add(symbolInfo);
-                        ////}
-                    }
-
-                    assemblyNumber++;
-                }
-            }
-
-            Serialization.WriteDeclaredSymbols(declaredSymbols, outputPath ?? SolutionDestinationFolder);
-            ////NamespaceExplorer.WriteNamespaceExplorer(declaredTypes, outputPath ?? rootPath);
+                projects.ToDictionary(p => p.AssemblyId, p => p.ReferencingAssemblies.Count)
+            );
         }
     }
 }

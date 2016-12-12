@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Microsoft.Build.Construction;
 using Microsoft.Build.Evaluation;
+using System.IO; //Program-level code, should go with Program.cs to separate project
 
 namespace Microsoft.SourceBrowser.Common
 {
@@ -32,7 +32,7 @@ namespace Microsoft.SourceBrowser.Common
             }
         }
 
-        public static string GetAssemblyNameFromProject(string projectFilePath)
+        private static string GetAssemblyNameFromProject(string projectFilePath)
         {
             string assemblyName = null;
 

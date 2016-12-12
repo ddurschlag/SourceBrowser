@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -29,20 +29,20 @@ namespace Microsoft.SourceBrowser.BuildLogParser
         private static readonly Regex referenceRegex = new Regex(@" /(?:reference|r|link):((""[^""]*"")|([^"", ]*))(,((""[^""]*"")|([^"", ]*)))*");
         internal bool UnknownIntermediatePath;
 
-        public CompilerInvocation(string line)
-        {
-            line = CutOutTemp(line);
-            line = CutOutResources(line);
-            line = CutOutOutputPath(line);
-            line = CutOutDocPath(line);
-            line = CutOutIntermediateFiles(line);
+        //public CompilerInvocation(string line)
+        //{
+        //    line = CutOutTemp(line);
+        //    line = CutOutResources(line);
+        //    line = CutOutOutputPath(line);
+        //    line = CutOutDocPath(line);
+        //    line = CutOutIntermediateFiles(line);
 
-            line = CutOutUnresolvedReferencedBinaries(line);
+        //    line = CutOutUnresolvedReferencedBinaries(line);
 
-            int space = line.IndexOf(' ');
-            CompilerPath = line.Substring(0, space);
-            CommandLine = line.Substring(space + 1, line.Length - space - 1);
-        }
+        //    int space = line.IndexOf(' ');
+        //    CompilerPath = line.Substring(0, space);
+        //    CommandLine = line.Substring(space + 1, line.Length - space - 1);
+        //}
 
         public CompilerInvocation()
         {
@@ -120,96 +120,96 @@ namespace Microsoft.SourceBrowser.BuildLogParser
             return sb.ToString();
         }
 
-        private string CutOutUnresolvedReferencedBinaries(string commandLine)
-        {
-            // need to iterate end to start because otherwise we'd need to update the spans of matches
-            // after every delete
-            var matches = referenceRegex.Matches(commandLine)
-                .Cast<Match>()
-                .OrderByDescending(m => m.Index);
-            foreach (Match match in matches)
-            {
-                if (!AddReferencedBinaries(match.Value))
-                {
-                    commandLine = commandLine.Remove(match.Index, match.Length);
-                }
-            }
+        //private string CutOutUnresolvedReferencedBinaries(string commandLine)
+        //{
+        //    // need to iterate end to start because otherwise we'd need to update the spans of matches
+        //    // after every delete
+        //    var matches = referenceRegex.Matches(commandLine)
+        //        .Cast<Match>()
+        //        .OrderByDescending(m => m.Index);
+        //    foreach (Match match in matches)
+        //    {
+        //        if (!AddReferencedBinaries(match.Value))
+        //        {
+        //            commandLine = commandLine.Remove(match.Index, match.Length);
+        //        }
+        //    }
 
-            return commandLine;
-        }
+        //    return commandLine;
+        //}
 
-        private bool AddReferencedBinaries(string reference)
-        {
-            reference = reference.Trim();
+        //private bool AddReferencedBinaries(string reference)
+        //{
+        //    reference = reference.Trim();
 
-            int chopOffStart = 0;
-            if (reference.StartsWith("/reference:", StringComparison.OrdinalIgnoreCase))
-            {
-                chopOffStart = 11;
-            }
-            else if (reference.StartsWith("/r:", StringComparison.OrdinalIgnoreCase))
-            {
-                chopOffStart = 3;
-            }
-            else if (reference.StartsWith("/link:", StringComparison.OrdinalIgnoreCase))
-            {
-                chopOffStart = 6;
-            }
-            else
-            {
-                return true;
-            }
+        //    int chopOffStart = 0;
+        //    if (reference.StartsWith("/reference:", StringComparison.OrdinalIgnoreCase))
+        //    {
+        //        chopOffStart = 11;
+        //    }
+        //    else if (reference.StartsWith("/r:", StringComparison.OrdinalIgnoreCase))
+        //    {
+        //        chopOffStart = 3;
+        //    }
+        //    else if (reference.StartsWith("/link:", StringComparison.OrdinalIgnoreCase))
+        //    {
+        //        chopOffStart = 6;
+        //    }
+        //    else
+        //    {
+        //        return true;
+        //    }
 
-            reference = reference.Substring(chopOffStart);
+        //    reference = reference.Substring(chopOffStart);
 
-            int equals = reference.IndexOf('=');
-            if (equals == reference.Length - 1)
-            {
-                return true;
-            }
+        //    int equals = reference.IndexOf('=');
+        //    if (equals == reference.Length - 1)
+        //    {
+        //        return true;
+        //    }
 
-            if (equals > -1)
-            {
-                reference = reference.Substring(equals + 1);
-            }
+        //    if (equals > -1)
+        //    {
+        //        reference = reference.Substring(equals + 1);
+        //    }
 
-            var commaParts = reference.Split(',');
-            foreach (var commaPart in commaParts)
-            {
-                if (!AddReferencedBinary(commaPart))
-                {
-                    return false;
-                }
-            }
+        //    var commaParts = reference.Split(',');
+        //    foreach (var commaPart in commaParts)
+        //    {
+        //        if (!AddReferencedBinary(commaPart))
+        //        {
+        //            return false;
+        //        }
+        //    }
 
-            return true;
-        }
+        //    return true;
+        //}
 
-        private bool AddReferencedBinary(string reference)
-        {
-            string noQuotes = reference;
-            if (noQuotes[0] == '"' && noQuotes[noQuotes.Length - 1] == '"')
-            {
-                noQuotes = reference.Substring(1, reference.Length - 2);
-            }
+        //private bool AddReferencedBinary(string reference)
+        //{
+        //    string noQuotes = reference;
+        //    if (noQuotes[0] == '"' && noQuotes[noQuotes.Length - 1] == '"')
+        //    {
+        //        noQuotes = reference.Substring(1, reference.Length - 2);
+        //    }
 
-            bool fileExists = false;
-            lock (LogAnalyzer.cacheOfKnownExistingBinaries)
-            {
-                fileExists = LogAnalyzer.cacheOfKnownExistingBinaries.Contains(noQuotes);
-            }
+        //    bool fileExists = false;
+        //    lock (LogAnalyzer.cacheOfKnownExistingBinaries)
+        //    {
+        //        fileExists = LogAnalyzer.cacheOfKnownExistingBinaries.Contains(noQuotes);
+        //    }
 
-            if (fileExists || File.Exists(noQuotes))
-            {
-                ReferencedBinaries.Add(noQuotes);
-                return true;
-            }
-            else
-            {
-                LogAnalyzer.AddNonExistingReference(this, noQuotes);
-                return false;
-            }
-        }
+        //    if (fileExists || File.Exists(noQuotes))
+        //    {
+        //        ReferencedBinaries.Add(noQuotes);
+        //        return true;
+        //    }
+        //    else
+        //    {
+        //        LogAnalyzer.AddNonExistingReference(this, noQuotes);
+        //        return false;
+        //    }
+        //}
 
         private string CutOutOutputPath(string line)
         {
@@ -300,75 +300,75 @@ namespace Microsoft.SourceBrowser.BuildLogParser
             }
         }
 
-        public static CompilerInvocation CreateTypeScript(string line)
-        {
-            var invocation = new CompilerInvocation();
-            line = line.Trim();
-            int space = line.IndexOf(' ');
-            invocation.CompilerPath = line.Substring(0, space);
-            invocation.CommandLine = line.Substring(space + 1, line.Length - space - 1);
-            invocation.TypeScriptFiles = GetFilesFromCommandLine(invocation.CommandLine);
-            if (invocation.TypeScriptFiles != null &&
-                !invocation.TypeScriptFiles.Any(f => string.Equals(Path.GetFileName(f), "lib.d.ts", StringComparison.OrdinalIgnoreCase)))
-            {
-                var libdts = Path.Combine(Path.GetDirectoryName(invocation.CompilerPath), "lib.d.ts");
-                if (File.Exists(libdts))
-                {
-                    invocation.TypeScriptFiles.Add(libdts);
-                }
-            }
+        //public static CompilerInvocation CreateTypeScript(string line)
+        //{
+        //    var invocation = new CompilerInvocation();
+        //    line = line.Trim();
+        //    int space = line.IndexOf(' ');
+        //    invocation.CompilerPath = line.Substring(0, space);
+        //    invocation.CommandLine = line.Substring(space + 1, line.Length - space - 1);
+        //    invocation.TypeScriptFiles = GetFilesFromCommandLine(invocation.CommandLine);
+        //    if (invocation.TypeScriptFiles != null &&
+        //        !invocation.TypeScriptFiles.Any(f => string.Equals(Path.GetFileName(f), "lib.d.ts", StringComparison.OrdinalIgnoreCase)))
+        //    {
+        //        var libdts = Path.Combine(Path.GetDirectoryName(invocation.CompilerPath), "lib.d.ts");
+        //        if (File.Exists(libdts))
+        //        {
+        //            invocation.TypeScriptFiles.Add(libdts);
+        //        }
+        //    }
 
-            return invocation;
-        }
+        //    return invocation;
+        //}
 
-        private static List<string> GetFilesFromCommandLine(string commandLine)
-        {
-            var parts = commandLine.SplitBySpacesConsideringQuotes();
-            return GetFilesFromCommandLineParts(parts);
-        }
+        //private static List<string> GetFilesFromCommandLine(string commandLine)
+        //{
+        //    var parts = commandLine.SplitBySpacesConsideringQuotes();
+        //    return GetFilesFromCommandLineParts(parts);
+        //}
 
-        private static List<string> GetFilesFromCommandLineParts(IEnumerable<string> parts)
-        {
-            var results = new List<string>();
-            string previousPart = null;
-            foreach (var part in parts)
-            {
-                if (part.StartsWith("--"))
-                {
-                    previousPart = part;
-                    continue;
-                }
+        //private static List<string> GetFilesFromCommandLineParts(IEnumerable<string> parts)
+        //{
+        //    var results = new List<string>();
+        //    string previousPart = null;
+        //    foreach (var part in parts)
+        //    {
+        //        if (part.StartsWith("--"))
+        //        {
+        //            previousPart = part;
+        //            continue;
+        //        }
 
-                if (previousPart == "--module" || previousPart == "--target")
-                {
-                    previousPart = part;
-                    continue;
-                }
+        //        if (previousPart == "--module" || previousPart == "--target")
+        //        {
+        //            previousPart = part;
+        //            continue;
+        //        }
 
-                if (part.StartsWith("@"))
-                {
-                    var responseFile = part.Substring(1);
-                    if (File.Exists(responseFile))
-                    {
-                        var lines = File.ReadAllLines(responseFile);
-                        var responseFileIncludes = GetFilesFromCommandLineParts(lines);
-                        foreach (var responseFileInclude in responseFileIncludes)
-                        {
-                            results.Add(responseFileInclude);
-                        }
-                    }
+        //        if (part.StartsWith("@"))
+        //        {
+        //            var responseFile = part.Substring(1);
+        //            if (File.Exists(responseFile))
+        //            {
+        //                var lines = File.ReadAllLines(responseFile);
+        //                var responseFileIncludes = GetFilesFromCommandLineParts(lines);
+        //                foreach (var responseFileInclude in responseFileIncludes)
+        //                {
+        //                    results.Add(responseFileInclude);
+        //                }
+        //            }
 
-                    previousPart = part;
-                    continue;
-                }
+        //            previousPart = part;
+        //            continue;
+        //        }
 
-                var file = part.StripQuotes();
-                results.Add(file);
+        //        var file = part.StripQuotes();
+        //        results.Add(file);
 
-                previousPart = part;
-            }
+        //        previousPart = part;
+        //    }
 
-            return results;
-        }
+        //    return results;
+        //}
     }
 }

@@ -1,27 +1,35 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using Path = System.IO.Path;
+using StreamWriter = System.IO.StreamWriter;
+using Microsoft.SourceBrowser.Common.Entity;
 
 namespace Microsoft.SourceBrowser.HtmlGenerator
 {
     public class NamespaceExplorer
     {
-        public static void WriteNamespaceExplorer(string assemblyName, IEnumerable<DeclaredSymbolInfo> types, string rootPath)
+        public string AssemblyName { get; private set; }
+        private IO.ProjectManager IOManager { get; set; }
+
+        public NamespaceExplorer(string assemblyName, IO.ProjectManager ioManager)
         {
-            new NamespaceExplorer().WriteFile(assemblyName, types, rootPath, "../");
+            AssemblyName = assemblyName;
+            IOManager = ioManager;
         }
 
-        private void WriteFile(string assemblyName, IEnumerable<DeclaredSymbolInfo> types, string rootPath, string pathPrefix)
+        public void WriteNamespaceExplorer(IEnumerable<DeclaredSymbolInfo> types)
         {
-            var fileName = Path.Combine(rootPath, Constants.Namespaces);
+            using (var sw = IOManager.GetNamespaceWriter())
+                WriteFile(sw, types, "../");
+        }
+
+        private void WriteFile(StreamWriter sw, IEnumerable<DeclaredSymbolInfo> types, string pathPrefix)
+        {
             NamespaceTreeNode root = ConstructTree(types);
 
-            using (var sw = new StreamWriter(fileName))
-            {
-                Markup.WriteNamespaceExplorerPrefix(assemblyName, sw, pathPrefix);
-                WriteChildren(root, sw, pathPrefix);
-                Markup.WriteNamespaceExplorerSuffix(sw);
-            }
+            Markup.WriteNamespaceExplorerPrefix(AssemblyName, sw, pathPrefix);
+            WriteChildren(root, sw, pathPrefix);
+            Markup.WriteNamespaceExplorerSuffix(sw);
         }
 
         public NamespaceTreeNode ConstructTree(IEnumerable<DeclaredSymbolInfo> types)

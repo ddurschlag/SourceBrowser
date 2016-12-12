@@ -23,6 +23,11 @@ namespace Microsoft.SourceBrowser.Common
             return result;
         }
 
+        public void Add(string symbolID, IEnumerable<SymbolLocation> locations)
+        {
+            Get(symbolID).UnionWith(locations);
+        }
+
         public void Add(string symbolID, SymbolLocation location)
         {
             Get(symbolID).Add(location);
@@ -31,6 +36,14 @@ namespace Microsoft.SourceBrowser.Common
         public void Add(string symbolID, string filePath, long offset)
         {
             Add(symbolID, new SymbolLocation(filePath, offset));
+        }
+
+        public IEnumerable<string> SymbolIds
+        {
+            get
+            {
+                return index.Keys;
+            }
         }
 
         public IEnumerator<Tuple<string, IEnumerable<SymbolLocation>>> GetEnumerator()

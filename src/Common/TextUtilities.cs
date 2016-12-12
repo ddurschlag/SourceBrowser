@@ -277,6 +277,60 @@ namespace Microsoft.SourceBrowser.Common
             return max;
         }
 
+        public static ulong HexStringToULong(string hex)
+        {
+            ulong result = 0;
+            for (int i = 0; i < 8; i++)
+            {
+                ulong b = GetHexVal(hex[i * 2]);
+                result = result | (b << (i * 8 + 4));
+                b = GetHexVal(hex[i * 2 + 1]);
+                result = result | (b << (i * 8));
+            }
+
+            return result;
+        }
+
+        public static string ULongToHexString(ulong number)
+        {
+            var sb = new StringBuilder(16);
+            for (int i = 0; i < 8; i++)
+            {
+                int shift = 8 * i + 4;
+                int b = (byte)((number & ((ulong)15 << shift)) >> shift);
+                sb.Append(Convert.ToString(b, 16));
+                shift = 8 * i;
+                b = (byte)((number & ((ulong)15 << shift)) >> shift);
+                sb.Append(Convert.ToString(b, 16));
+            }
+
+            return sb.ToString();
+        }
+
+        public static byte[] HexStringToByteArray(string hex)
+        {
+            byte[] result = new byte[hex.Length >> 1];
+
+            for (int i = 0; i < hex.Length >> 1; i++)
+            {
+                result[i] = (byte)((GetHexVal(hex[i << 1]) << 4) + (GetHexVal(hex[(i << 1) + 1])));
+            }
+
+            return result;
+        }
+
+        public static byte GetHexVal(char hex)
+        {
+            int val = (int)hex;
+            //For uppercase A-F letters:
+            //return val - (val < 58 ? 48 : 55);
+            //For lowercase a-f letters:
+            return (byte)(val - (val < 58 ? 48 : 87));
+            //Or the two combined, but a bit slower:
+            //return val - (val < 58 ? 48 : (val < 97 ? 55 : 87));
+        }
+
+
         private static bool DoesPrefixLengthCreateCollisions(IEnumerable<string> strings, int prefixLength)
         {
             var set = new HashSet<string>();

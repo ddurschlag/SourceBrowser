@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Text;
 using Microsoft.Language.Xml;
@@ -15,86 +15,85 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         protected string sourceText;
         protected int[] lineLengths;
 
-        public void Generate(string sourceXmlFilePath, string destinationHtmlFilePath, string solutionDestinationFolder)
+        public void Generate(string sourceXmlFilePath, string destinationHtmlFilePath, string solutionDestinationFolder, IO.ProjectManager ioManager)
         {
             Log.Write(destinationHtmlFilePath);
 
             this.sourceXmlFilePath = Path.GetFullPath(sourceXmlFilePath);
             this.destinationHtmlFilePath = destinationHtmlFilePath;
 
-            sourceText = File.ReadAllText(sourceXmlFilePath);
-            var lines = File.ReadAllLines(sourceXmlFilePath);
-            lineLengths = TextUtilities.GetLineLengths(sourceText);
-            var lineCount = lines.Length;
-            var root = Parser.ParseText(sourceText);
-
-            var sb = new StringBuilder();
-
-            var relativePathToRoot = Paths.CalculateRelativePathToRoot(destinationHtmlFilePath, solutionDestinationFolder);
-
-            var prefix = Markup.GetDocumentPrefix(Path.GetFileName(sourceXmlFilePath), relativePathToRoot, lineCount, "ix");
-            sb.Append(prefix);
-
-            var displayName = GetDisplayName();
-            var assemblyName = GetAssemblyName();
-
-            var url = "/#" + assemblyName + "/" + displayName.Replace('\\', '/');
-
-            var file = string.Format("File: <a id=\"filePath\" class=\"blueLink\" href=\"{0}\" target=\"_top\">{1}</a><br/>", url, displayName);
-            var row = string.Format("<tr><td>{0}</td></tr>", file);
-            Markup.WriteLinkPanel(s => sb.AppendLine(s), row);
-
-            // pass a value larger than 0 to generate line numbers statically at HTML generation time
-            var table = Markup.GetTablePrefix();
-            sb.AppendLine(table);
-
-            var ranges = new List<ClassifiedRange>();
-
-            ClassifierVisitor.Visit(
-                root,
-                0,
-                sourceText.Length,
-                (start, length, node, classification) =>
-                {
-                    var line = TextUtilities.GetLineFromPosition(start, sourceText);
-                    var lineText = sourceText.Substring(line.Item1, line.Item2);
-
-                    ranges.Add(
-                        new ClassifiedRange
-                        {
-                            Classification = classification,
-                            Node = node,
-                            Text = sourceText.Substring(start, length),
-                            LineText = lineText,
-                            LineStart = line.Item1,
-                            LineNumber = TextUtilities.GetLineNumber(start, lineLengths),
-                            Start = start,
-                            Length = length
-                        });
-                });
-
-            ranges = RangeUtilities.FillGaps(
-                sourceText,
-                ranges,
-                r => r.Start,
-                r => r.Length,
-                (s, l, t) => new ClassifiedRange
-                {
-                    Start = s,
-                    Length = l,
-                    Text = t.Substring(s, l)
-                }).ToList();
-            foreach (var range in ranges)
+            ioManager.WriteOnce(destinationHtmlFilePath, sb =>
             {
-                GenerateRange(range, sb);
-            }
 
-            var suffix = Markup.GetDocumentSuffix();
-            sb.AppendLine(suffix);
+                sourceText = ioManager.GetFileText(sourceXmlFilePath);
+                lineLengths = TextUtilities.GetLineLengths(sourceText);
+                var lineCount = ioManager.GetFileLineCount(sourceXmlFilePath);
+                var root = Parser.ParseText(sourceText);
 
-            var folder = Path.GetDirectoryName(destinationHtmlFilePath);
-            Directory.CreateDirectory(folder);
-            File.WriteAllText(destinationHtmlFilePath, sb.ToString());
+
+                var relativePathToRoot = Paths.CalculateRelativePathToRoot(destinationHtmlFilePath, solutionDestinationFolder);
+
+                var prefix = Markup.GetDocumentPrefix(Path.GetFileName(sourceXmlFilePath), relativePathToRoot, lineCount, "ix");
+                sb.Append(prefix);
+
+                var displayName = GetDisplayName();
+                var assemblyName = GetAssemblyName();
+
+                var url = "/#" + assemblyName + "/" + displayName.Replace('\\', '/');
+
+                var file = string.Format("File: <a id=\"filePath\" class=\"blueLink\" href=\"{0}\" target=\"_top\">{1}</a><br/>", url, displayName);
+                var row = string.Format("<tr><td>{0}</td></tr>", file);
+                Markup.WriteLinkPanel(s => sb.AppendLine(s), row);
+
+                // pass a value larger than 0 to generate line numbers statically at HTML generation time
+                var table = Markup.GetTablePrefix();
+                sb.AppendLine(table);
+
+                var ranges = new List<ClassifiedRange>();
+
+                ClassifierVisitor.Visit(
+                    root,
+                    0,
+                    sourceText.Length,
+                    (start, length, node, classification) =>
+                    {
+                        var line = TextUtilities.GetLineFromPosition(start, sourceText);
+                        var lineText = sourceText.Substring(line.Item1, line.Item2);
+
+                        ranges.Add(
+                            new ClassifiedRange
+                            {
+                                Classification = classification,
+                                Node = node,
+                                Text = sourceText.Substring(start, length),
+                                LineText = lineText,
+                                LineStart = line.Item1,
+                                LineNumber = TextUtilities.GetLineNumber(start, lineLengths),
+                                Start = start,
+                                Length = length
+                            });
+                    });
+
+                ranges = RangeUtilities.FillGaps(
+                    sourceText,
+                    ranges,
+                    r => r.Start,
+                    r => r.Length,
+                    (s, l, t) => new ClassifiedRange
+                    {
+                        Start = s,
+                        Length = l,
+                        Text = t.Substring(s, l)
+                    }).ToList();
+                foreach (var range in ranges)
+                {
+                    GenerateRange(range, sb);
+                }
+
+                var suffix = Markup.GetDocumentSuffix();
+                sb.AppendLine(suffix);
+
+            });
         }
 
         protected abstract string GetDisplayName();

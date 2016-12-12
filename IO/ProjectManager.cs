@@ -9,17 +9,19 @@ namespace Microsoft.SourceBrowser.IO
 {
     public class ProjectManager : IOManager
     {
-        internal ProjectManager(SolutionManager parent, string projectDestinationFolder, string assemblyId, bool writeDocumentsToDisk)
+        internal ProjectManager(SolutionManager parent, string projectDestinationFolder, string assemblyId, bool writeDocumentsToDisk, int parallelism)
         {
             Parent = parent;
             ProjectDestinationFolder = projectDestinationFolder;
             AssemblyId = assemblyId;
             WriteDocumentsToDisk = writeDocumentsToDisk;
+            Parallelism = parallelism;
         }
         public string ProjectDestinationFolder { get; private set; }
         public bool WriteDocumentsToDisk { get; private set; }
         public SolutionManager Parent { get; private set; }
         public string AssemblyId { get; private set; }
+        public int Parallelism { get; private set; }
 
         public bool HtmlDestinationExists(Destination d)
         {
@@ -29,6 +31,91 @@ namespace Microsoft.SourceBrowser.IO
         public bool DestinationExists(Destination d)
         {
             return File.Exists(GetDestinationPath(d));
+        }
+
+        public IEnumerable<string> CallTypescriptAnalyzer(string argumentJson)
+        {
+            var output = Path.Combine(Common.Paths.BaseAppFolder, "output");
+            if (Directory.Exists(output))
+            {
+                Directory.Delete(output, recursive: true);
+            }
+
+            var argumentsPath = Path.Combine(Common.Paths.BaseAppFolder, "TypeScriptAnalyzerArguments.json");
+            File.WriteAllText(argumentsPath, argumentJson);
+
+            var analyzerJs = Path.Combine(Common.Paths.BaseAppFolder, @"TypeScriptSupport\analyzer.js");
+            var arguments = string.Format("\"{0}\" {1}", analyzerJs, argumentsPath);
+
+            Common.ProcessLaunchService.ProcessRunResult result;
+            try
+            {
+                using (Common.Disposable.Timing("Calling Node.js to process TypeScript"))
+                {
+                    result = new Common.ProcessLaunchService().RunAndRedirectOutput("node", arguments);
+                }
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                Common.Log.Write("Warning: Node.js is required to generate TypeScript files. Skipping generation. Download Node.js from https://nodejs.org.", ConsoleColor.Yellow);
+                Common.Log.Exception("Node.js is not installed.");
+                yield break;
+            }
+
+            using (Common.Disposable.Timing("Generating TypeScript files"))
+            {
+                foreach (var file in Directory.GetFiles(output))
+                {
+                    if (Path.GetFileNameWithoutExtension(file) == "ok")
+                    {
+                        continue;
+                    }
+
+                    if (Path.GetFileNameWithoutExtension(file) == "error")
+                    {
+                        var errorContent = File.ReadAllText(file);
+                        Common.Log.Exception(DateTime.Now.ToString() + " " + errorContent);
+                        continue;
+                    }
+
+                    yield return File.ReadAllText(file);
+                }
+            }
+        }
+
+        public void WriteOnce(string path, Action<StringBuilder> builder)
+        {
+            if (!File.Exists(path))
+            {
+                StringBuilder sb = new StringBuilder();
+                var folder = Path.GetDirectoryName(path);
+                Directory.CreateDirectory(folder);
+                builder(sb);
+                File.WriteAllText(path, sb.ToString());
+            }
+        }
+
+        [Obsolete("This interface seems far too broad")]
+        public string GetFileText(string path)
+        {
+            return File.ReadAllText(path);
+        }
+
+        [Obsolete("This interface seems far too broad")]
+        public int GetFileLineCount(string path)
+        {
+            return File.ReadAllLines(path).Length;
+        }
+
+        public string[] ReadProjectExplorer()
+        {
+            var fileName = Path.Combine(ProjectDestinationFolder, Constants.ProjectExplorer + ".html");
+            if (!File.Exists(fileName))
+            {
+                return null;
+            }
+
+            return File.ReadAllLines(fileName);
         }
 
         public void CreateDirectory()
@@ -51,9 +138,141 @@ namespace Microsoft.SourceBrowser.IO
             return Directory.GetFiles(ProjectDestinationFolder, "*.html", SearchOption.AllDirectories);
         }
 
+        public IEnumerable<SymbolReferencesThingy> GetReferencesFiles()
+        {
+            return Directory.GetFiles(Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName), "*.txt")
+                .Select(fp=>new SymbolReferencesThingy(fp));
+        }
+
+        public IEnumerable<string> GetDeclaredSymbolLines()
+        {
+            return GetTextFileLines(Constants.DeclaredSymbolsFileName);
+        }
+
+        public IEnumerable<string> GetBaseMemberLines()
+        {
+            return GetTextFileLines(Constants.BaseMembersFileName);
+        }
+
+        public IEnumerable<string> GetImplementedInterfaceMemberLines()
+        {
+            return GetTextFileLines(Constants.ImplementedInterfaceMembersFileName);
+        }
+
+        public IEnumerable<string> GetProjectInfoLines()
+        {
+            return GetTextFileLines(Constants.ProjectInfoFileName);
+        }
+
+        public IEnumerable<string> GetReferencedAssemblyLines()
+        {
+            return GetTextFileLines(Constants.ReferencedAssemblyList);
+        }
+
+        public Common.SymbolIndex GetDeclarationMap()
+        {
+            return ReadSymbolIndex(Constants.DeclarationMap);
+        }
+
+        private Common.SymbolIndex ReadSymbolIndex(string file)
+        {
+            Common.SymbolIndexBuilder builder = new Common.SymbolIndexBuilder();
+
+            foreach (var line in GetTextFileLines(file))
+                builder.Process(line);
+
+            return builder.Build();
+        }
+
+        private IEnumerable<string> GetTextFileLines(string file)
+        {
+            var assemblyIndex = Path.Combine(ProjectDestinationFolder, file + ".txt");
+            if (!File.Exists(assemblyIndex))
+            {
+                return new string[0];
+            }
+
+            return File.ReadAllLines(assemblyIndex);
+        }
+
+        [Obsolete("This interface seems far too broad")]
         public void Write(string file, string contents)
         {
             File.WriteAllText(Path.Combine(ProjectDestinationFolder, file), contents);
+        }
+
+        public StreamWriter GetNamespaceWriter()
+        {
+            var fileName = Path.Combine(ProjectDestinationFolder, Constants.Namespaces);
+            return new StreamWriter(fileName);
+        }
+
+        public void WriteIDResolvingFileOnce(Action<StringBuilder> builder)
+        {
+            WriteOnce(Path.Combine(ProjectDestinationFolder, Constants.IDResolvingFileName + ".html"), builder);
+        }
+
+        public StreamWriter GetIDResolvingWriter(string suffix)
+        {
+            var fileName = Path.Combine(ProjectDestinationFolder, Constants.IDResolvingFileName + suffix + ".html");
+
+            File.Delete(fileName);
+            return new StreamWriter(fileName, append: false, encoding: Encoding.UTF8);
+        }
+
+        public ReferenceWriter GetReferenceWriter(string symbolId)
+        {
+            return new ReferenceWriter(new StreamWriter(GetReferencesFilePath(symbolId + ".txt"), append: true, encoding: Encoding.UTF8));
+        }
+
+        public bool ReferencesExists(string symbolId)
+        {
+            return File.Exists(GetReferencesFilePath(symbolId + ".txt"));
+        }
+
+        public bool ReferenceDirExists()
+        {
+            return Directory.Exists(Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName));
+        }
+
+        public void Patch(Destination d, byte[] zeroId, IEnumerable<long> offsets)
+        {
+            int zeroIdLength = zeroId.Length;
+
+            using (var stream = new FileStream(GetDestinationPath(d), FileMode.Open, FileAccess.ReadWrite))
+            {
+                foreach (var offset in offsets)
+                {
+                    stream.Seek(offset, SeekOrigin.Begin);
+                    stream.Write(zeroId, 0, zeroIdLength);
+                }
+            }
+        }
+
+        public void AppendReferences(IEnumerable<KeyValuePair<string, List<Common.Entity.Reference>>> references)
+        {
+            CreateReferencesDirectory();
+
+            Parallel.ForEach(
+                references,
+                new ParallelOptions { MaxDegreeOfParallelism = Parallelism },
+                referencesToSymbol =>
+                {
+                    try
+                    {
+                        using (var writer = GetReferenceWriter(referencesToSymbol.Key))
+                        {
+                            foreach (var reference in referencesToSymbol.Value)
+                            {
+                                writer.Write(reference);
+                            }
+                        }
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        Common.Log.Exception(ex.ToString() + "\r\n\r\n" + "AssemblyId: " + AssemblyId + "   referencesToSymbol.Key: " + referencesToSymbol.Key);
+                    }
+                });
         }
 
         public StreamWriter GetHtmlWriter(Destination d)
@@ -97,9 +316,13 @@ namespace Microsoft.SourceBrowser.IO
             return GetUrlFromDestinationToPath(d, symbolId, Path.Combine(ProjectDestinationFolder, relativePath));
         }
 
-        private string GetReferencedSymbolDestinationFilePath(string symbolId)
+        //TODO: Should this return a destination?par
+        public string GetReferencedSymbolDestinationFilePath(string symbolId)
         {
-            return Parent.GetReferencedSymbolDestinationFilePath(this.AssemblyId, symbolId);
+            return Path.Combine(
+                ProjectDestinationFolder,
+                Constants.PartialResolvingFileName,
+                symbolId);
         }
 
         public string GetPathToSolutionRoot(Destination d)
@@ -173,10 +396,39 @@ namespace Microsoft.SourceBrowser.IO
             File.AppendAllText(Path.Combine(ProjectDestinationFolder, name + ".txt"), string.Empty);
         }
 
+        public void WriteDeclaredSymbols(IEnumerable<string> lines, bool overwrite = false)
+        {
+            var fileName = Path.Combine(ProjectDestinationFolder, Constants.DeclaredSymbolsFileName + ".txt");
+            if (overwrite)
+            {
+                File.WriteAllLines(fileName, lines, Encoding.UTF8);
+            }
+            else
+            {
+                File.AppendAllLines(fileName, lines, Encoding.UTF8);
+            }
+        }
+
         public void WriteBaseMembers(IEnumerable<string> baseMemberLines)
         {
             var fileName = Path.Combine(ProjectDestinationFolder, Constants.BaseMembersFileName + ".txt");
             File.WriteAllLines(fileName, baseMemberLines);
+        }
+
+        public void WriteReferencingAssemblies(IEnumerable<string> referencingAssemblyLines)
+        {
+            var fileName = Path.Combine(ProjectDestinationFolder, Constants.ReferencingAssemblyList + ".txt");
+            File.WriteAllLines(fileName, referencingAssemblyLines);
+        }
+
+        public void WriteProjectExplorer(string content)
+        {
+            File.WriteAllText(Path.Combine(ProjectDestinationFolder, Constants.ProjectExplorer) + ".html", content);
+        }
+
+        public void WriteProjectInfo(string content)
+        {
+            File.WriteAllText(Path.Combine(ProjectDestinationFolder, Constants.ProjectInfoFileName) + ".txt", content);
         }
 
         public void WriteImplementedInterfaceMembers(IEnumerable<string> implementedInterfaceMemberLines)
@@ -199,6 +451,28 @@ namespace Microsoft.SourceBrowser.IO
                     }
                 }
             }
+        }
+
+        private static string partialTypeDisambiguationFileTemplate = @"<!DOCTYPE html>
+<html><head><link rel=""stylesheet"" href=""{0}"">
+</head><body><div class=""partialTypeHeader"">Partial Type</div>
+{1}
+</body></html>";
+
+        public void GeneratePartialTypeDisambiguationFile(string symbolId, IEnumerable<string> filePaths)
+        {
+            string partialFolder = Path.Combine(ProjectDestinationFolder, Constants.PartialResolvingFileName);
+            Directory.CreateDirectory(partialFolder);
+            var disambiguationFileName = Path.Combine(partialFolder, symbolId) + ".html";
+            string list = string.Join(Environment.NewLine,
+                filePaths
+                .OrderBy(filePath => Path.ChangeExtension(filePath, null))
+                .Select(filePath => "<a href=\"../" + filePath + ".html#" + symbolId + "\"><div class=\"partialTypeLink\">" + filePath + "</div></a>"));
+            string content = string.Format(
+                partialTypeDisambiguationFileTemplate,
+                Parent.GetCssPathFromFile(disambiguationFileName),
+                list);
+            File.WriteAllText(disambiguationFileName, content, Encoding.UTF8);
         }
     }
 }

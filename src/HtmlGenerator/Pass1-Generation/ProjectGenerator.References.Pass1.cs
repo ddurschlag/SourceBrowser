@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.SourceBrowser.Common;
+using Microsoft.SourceBrowser.Common.Entity;
 
 namespace Microsoft.SourceBrowser.HtmlGenerator
 {
@@ -209,7 +210,13 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     a != Constants.MSBuildTargetsAssembly &&
                     a != Constants.MSBuildTasksAssembly &&
                     a != Constants.GuidAssembly);
-            File.WriteAllLines(Path.Combine(ProjectDestinationFolder, Constants.UsedReferencedAssemblyList + ".txt"), this.UsedReferences);
+
+            //todo: Log this usefully, if needed?
+            //Log.Write("Used Assemblies:", ConsoleColor.DarkGray);
+            //    foreach ( var s in UsedReferences )
+            //    {
+            //Log.Write(s, ConsoleColor.DarkGray);
+            //    }
         }
 
         private void GenerateReferencedAssemblyList()
@@ -228,63 +235,21 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 list.Add(Path.GetFileNameWithoutExtension(metadataReference.Display));
             }
 
-            File.WriteAllText(index, string.Join(Environment.NewLine, list));
+            //todo: Log this usefully, if needed?
+            //Log.Write("Referenced Assemblies:", ConsoleColor.DarkGray);
+            //    foreach ( var s in list )
+            //    {
+            //Log.Write(s, ConsoleColor.DarkGray);
+            //    }
         }
 
-        public static void GenerateReferencesDataFiles(
-            string solutionDestinationFolder,
-            Dictionary<string, Dictionary<string, List<Reference>>> referencesByTargetAssemblyAndSymbolId)
+        public void GenerateReferencesDataFiles()
         {
             Log.Write("References data files...", ConsoleColor.White);
 
-            Log.Write("All from assemblies: " + string.Join(", ", referencesByTargetAssemblyAndSymbolId.SelectMany(kvp => kvp.Value.SelectMany(kvp2 => kvp2.Value.Select(r => r.FromAssemblyId))).Distinct()), ConsoleColor.Cyan);
+            Log.Write("All from assemblies: " + string.Join(", ", ReferencesByTargetAssemblyAndSymbolId.SelectMany(kvp => kvp.Value.SelectMany(kvp2 => kvp2.Value.Select(r => r.FromAssemblyId))).Distinct()), ConsoleColor.Cyan);
 
-            foreach (var referencesToAssembly in referencesByTargetAssemblyAndSymbolId)
-            {
-                GenerateReferencesDataFilesToAssembly(
-                    solutionDestinationFolder,
-                    referencesToAssembly.Key,
-                    referencesToAssembly.Value);
-            }
-        }
-
-        public static void GenerateReferencesDataFilesToAssembly(
-            string solutionDestinationFolder,
-            string toAssemblyId,
-            Dictionary<string, List<Reference>> referencesToAssembly)
-        {
-            var assemblyReferencesDataFolder = Path.Combine(
-                solutionDestinationFolder,
-                toAssemblyId,
-                Constants.ReferencesFileName);
-            Directory.CreateDirectory(assemblyReferencesDataFolder);
-
-            Parallel.ForEach(
-                referencesToAssembly,
-                new ParallelOptions { MaxDegreeOfParallelism = Configuration.Parallelism },
-                referencesToSymbol =>
-                    {
-                        try
-                        {
-                            var linkDataFile = Path.Combine(assemblyReferencesDataFolder, referencesToSymbol.Key + ".txt");
-                            WriteSymbolReferencesToFile(referencesToSymbol.Value, linkDataFile);
-                        }
-                        catch (ArgumentException ex)
-                        {
-                            Log.Exception("ArgumentException in References.Pass1.cs, line 236: " + ex.ToString() + "\r\n\r\n" + "assemblyReferencesDataFolder: " + assemblyReferencesDataFolder + "   referencesToSymbol.Key: " + referencesToSymbol.Key);
-                        }
-                    });
-        }
-
-        public static void WriteSymbolReferencesToFile(IEnumerable<Reference> referencesToSymbol, string linkDataFile)
-        {
-            using (var writer = new StreamWriter(linkDataFile, append: true, encoding: Encoding.UTF8))
-            {
-                foreach (var reference in referencesToSymbol)
-                {
-                    reference.WriteTo(writer);
-                }
-            }
+            SolutionGenerator.IOManager.AppendReferences(ReferencesByTargetAssemblyAndSymbolId);
         }
     }
 }

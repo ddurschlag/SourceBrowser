@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
+using Path = System.IO.Path;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -15,13 +15,12 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         private void GenerateProjectExplorer()
         {
             Log.Write("Project Explorer...");
-            var projectExplorerFile = Path.Combine(ProjectDestinationFolder, Constants.ProjectExplorer) + ".html";
             var sb = new StringBuilder();
             Markup.WriteProjectExplorerPrefix(sb, Project.AssemblyName);
             WriteDocuments(sb);
             WriteProjectStats(sb);
             Markup.WriteProjectExplorerSuffix(sb);
-            File.WriteAllText(projectExplorerFile, sb.ToString());
+            IOManager.WriteProjectExplorer(sb.ToString());
         }
 
         private void WriteProjectStats(StringBuilder sb)
