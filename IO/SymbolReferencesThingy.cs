@@ -12,16 +12,18 @@ namespace Microsoft.SourceBrowser.IO
     /// </summary>
     public class SymbolReferencesThingy
     {
-        private string FilePath { get; set; }
+        private string InputPath { get; set; }
+//        private SolutionManager IOManager { get; set; }
 
-        public SymbolReferencesThingy(string inputPath)
+        public SymbolReferencesThingy(string inputPath)//, SolutionManager ioManager)
         {
-            FilePath = inputPath;
+            InputPath = inputPath;
+  //          IOManager = ioManager;
         }
 
         public IEnumerable<Common.Entity.Reference> ReadAllReferences()
         {
-            using (var rr = new ReferenceReader(new StreamReader(FilePath)))
+            using (var rr = new ReferenceReader(new StreamReader(InputPath)))
             {
                 var r = rr.Read();
                 while (r != null)
@@ -32,11 +34,11 @@ namespace Microsoft.SourceBrowser.IO
             }
         }
 
-        public StreamWriter GetOutputWriter()
-        {
-            return new StreamWriter(Path.ChangeExtension(FilePath, ".html"), false, Encoding.UTF8);
-        }
+        //public StreamWriter GetOutputWriter(Common.Entity.Reference r)
+        //{
+        //    return IOManager.GetProjectManager(r.ToAssemblyId).GetReferenceHtmlWriter(SymbolId);
+        //}
 
-        public string SymbolId { get { return Path.GetFileNameWithoutExtension(FilePath); } }
+        public string SymbolId { get { return Path.GetFileNameWithoutExtension(InputPath); } }
     }
 }

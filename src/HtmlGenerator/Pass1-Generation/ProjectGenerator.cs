@@ -50,7 +50,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             //TODO: is this needed? Should this constructor actually be a different implementation of the same interface?
             IOManager = ioManager.GetProjectManager(folderName);
-            IOManager.CreateReferencesDirectory();
+            IOManager.CreateOutgoingReferencesDirectory();
         }
 
         private static HashSet<string> RedirectFileNames = new HashSet<string>

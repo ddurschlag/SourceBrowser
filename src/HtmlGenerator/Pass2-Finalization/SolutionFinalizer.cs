@@ -200,20 +200,27 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         private void CreateReferencesFiles()
         {
-            Parallel.ForEach(
-                projects,
-                new ParallelOptions { MaxDegreeOfParallelism = Configuration.Parallelism },
-                project =>
+            var referenceLookup = IOManager.GetProjectToSymbolToReferences();
+
+            foreach (var project in projects)
+            {
+                //Parallel.ForEach(
+                //    projects,
+                //    new ParallelOptions { MaxDegreeOfParallelism = Configuration.Parallelism },
+                //    project =>
+                //    {
+                try
                 {
-                    try
-                    {
-                        project.CreateReferencesFiles();
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Exception(ex, "CreateReferencesFiles failed for project: " + project.AssemblyId);
-                    }
-                });
+                    Dictionary<string, IEnumerable<Common.Entity.Reference>> symbolIdToReferences;
+                    if (referenceLookup.TryGetValue(project.AssemblyId, out symbolIdToReferences))
+                        project.CreateReferencesFiles(symbolIdToReferences);
+                }
+                catch (Exception ex)
+                {
+                    Log.Exception(ex, "CreateReferencesFiles failed for project: " + project.AssemblyId);
+                }
+                //});
+            }
         }
 
         public void CreateProjectMap(string outputPath = null)

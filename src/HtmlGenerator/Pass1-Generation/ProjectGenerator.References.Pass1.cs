@@ -222,7 +222,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         private void GenerateReferencedAssemblyList()
         {
             Log.Write("Referenced assembly list...");
-            var index = Path.Combine(ProjectDestinationFolder, Constants.ReferencedAssemblyList + ".txt");
+            //var index = Path.Combine(ProjectDestinationFolder, Constants.ReferencedAssemblyList + ".txt");
             var list = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var projectReference in Project.ProjectReferences.OrderBy(p => Project.Solution.GetProject(p.ProjectId).AssemblyName))

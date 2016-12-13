@@ -128,9 +128,20 @@ namespace Microsoft.SourceBrowser.IO
             Directory.CreateDirectory(Path.GetDirectoryName(GetHtmlDestinationPath(d)));
         }
 
+        private bool ReferencesDirectoryCreated = false;
         public void CreateReferencesDirectory()
         {
-            Directory.CreateDirectory(Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName));
+            var path = Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName);
+            if (Directory.Exists(path))
+                Directory.Delete(path, true);
+            Directory.CreateDirectory(path);
+            ReferencesDirectoryCreated = true;
+        }
+
+
+        public void CreateOutgoingReferencesDirectory()
+        {
+            Directory.CreateDirectory(Path.Combine(ProjectDestinationFolder, Constants.OutgoingReferencesFileName));
         }
 
         public IEnumerable<string> GetHtmlOutputFiles()
@@ -140,8 +151,8 @@ namespace Microsoft.SourceBrowser.IO
 
         public IEnumerable<SymbolReferencesThingy> GetReferencesFiles()
         {
-            return Directory.GetFiles(Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName), "*.txt")
-                .Select(fp=>new SymbolReferencesThingy(fp));
+            return Directory.GetFiles(Path.Combine(ProjectDestinationFolder, Constants.OutgoingReferencesFileName), "*.txt")
+                .Select(fp => new SymbolReferencesThingy(fp));
         }
 
         public IEnumerable<string> GetDeclaredSymbolLines()
@@ -222,17 +233,24 @@ namespace Microsoft.SourceBrowser.IO
 
         public ReferenceWriter GetReferenceWriter(string symbolId)
         {
-            return new ReferenceWriter(new StreamWriter(GetReferencesFilePath(symbolId + ".txt"), append: true, encoding: Encoding.UTF8));
+            return new ReferenceWriter(new StreamWriter(GetOutgoingReferencesFilePath(symbolId + ".txt"), append: true, encoding: Encoding.UTF8));
+        }
+
+        public StreamWriter GetReferenceHtmlWriter(string symbolId)
+        {
+            if (!ReferencesDirectoryCreated)
+                CreateReferencesDirectory();
+            return new StreamWriter(Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName, symbolId + ".html"), true, Encoding.UTF8);
         }
 
         public bool ReferencesExists(string symbolId)
         {
-            return File.Exists(GetReferencesFilePath(symbolId + ".txt"));
+            return File.Exists(GetOutgoingReferencesFilePath(symbolId + ".txt"));
         }
 
         public bool ReferenceDirExists()
         {
-            return Directory.Exists(Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName));
+            return Directory.Exists(Path.Combine(ProjectDestinationFolder, Constants.OutgoingReferencesFileName));
         }
 
         public void Patch(Destination d, byte[] zeroId, IEnumerable<long> offsets)
@@ -251,7 +269,7 @@ namespace Microsoft.SourceBrowser.IO
 
         public void AppendReferences(IEnumerable<KeyValuePair<string, List<Common.Entity.Reference>>> references)
         {
-            CreateReferencesDirectory();
+            CreateOutgoingReferencesDirectory();
 
             Parallel.ForEach(
                 references,
@@ -386,9 +404,9 @@ namespace Microsoft.SourceBrowser.IO
             ).Replace('\\', '/');
         }
 
-        private string GetReferencesFilePath(string filename)
+        private string GetOutgoingReferencesFilePath(string filename)
         {
-            return Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName, filename);
+            return Path.Combine(ProjectDestinationFolder, Constants.OutgoingReferencesFileName, filename);
         }
 
         public void EnsureReferencesFile(string name)

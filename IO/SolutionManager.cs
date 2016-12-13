@@ -27,6 +27,7 @@ namespace Microsoft.SourceBrowser.IO
 
         public ProjectManager GetProjectManager(string assemblyId)
         {
+            Common.Log.Write("Retrieving project manager " + assemblyId, ConsoleColor.Cyan);
             ProjectManager result;
             if (!_ProjectManagers.TryGetValue(assemblyId, out result))
             {
@@ -34,6 +35,15 @@ namespace Microsoft.SourceBrowser.IO
                 _ProjectManagers.Add(assemblyId, result);
             }
             return result;
+        }
+
+        public Dictionary<string, Dictionary<string,IEnumerable<Common.Entity.Reference>>> GetProjectToSymbolToReferences()
+        {
+            return ProjectManagers
+                .SelectMany(pm => pm.GetReferencesFiles())
+                .SelectMany(srt => srt.ReadAllReferences().Select(r => Tuple.Create(r, srt.SymbolId)))
+                .GroupBy(t => t.Item1.ToAssemblyId)
+                .ToDictionary(g => g.Key, g => g.GroupBy(t=>t.Item2).ToDictionary(g2=>g2.Key,g2=>g2.Select(t2=>t2.Item1)));
         }
 
         public string SolutionDestinationFolder { get; private set; }

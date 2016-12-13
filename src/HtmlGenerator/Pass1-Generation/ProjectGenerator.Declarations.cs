@@ -120,7 +120,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             Log.Write("Base members...");
 
-            IOManager.CreateReferencesDirectory();
+            IOManager.CreateOutgoingReferencesDirectory();
 
             lock (this.BaseMembers)
             {
@@ -166,7 +166,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             Log.Write("Implemented interface members...");
 
-            IOManager.CreateReferencesDirectory();
+            IOManager.CreateOutgoingReferencesDirectory();
 
             lock (this.ImplementedInterfaceMembers)
             {

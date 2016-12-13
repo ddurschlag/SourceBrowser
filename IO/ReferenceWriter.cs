@@ -22,6 +22,8 @@ namespace Microsoft.SourceBrowser.IO
         {
             Writer.Write(r.FromAssemblyId);
             Writer.Write(';');
+            Writer.Write(r.ToAssemblyId);
+            Writer.Write(';');
             Writer.Write(r.Url);
             Writer.Write(';');
             Writer.Write(r.FromLocalPath);

@@ -47,21 +47,26 @@ namespace Microsoft.SourceBrowser.Common.Entity
         {
         }
 
-        public Reference(string separatedLine, string sourceLine)
+        public Reference(
+            string fromAssemblyId,
+            string toAssemblyId,
+            string url,
+            string fromLocalPath,
+            int referenceLineNumber,
+            int referenceColumnStart,
+            int referenceColumnEnd,
+            string referenceLineText,
+            ReferenceKind kind = default(ReferenceKind))
         {
-            var parts = separatedLine.Split(';');
-            FromAssemblyId = string.Intern(parts[0]);
-            Url = parts[1];
-            FromLocalPath = parts[2];
-            ReferenceLineNumber = int.Parse(parts[3]);
-            ReferenceColumnStart = int.Parse(parts[4]);
-            ReferenceColumnEnd = int.Parse(parts[5]);
-            if (parts.Length >= 7)
-            {
-                Kind = (ReferenceKind)int.Parse(parts[6]);
-            }
-
-            ReferenceLineText = sourceLine;
+            FromAssemblyId = fromAssemblyId;
+            ToAssemblyId = toAssemblyId;
+            Url = url;
+            FromLocalPath = fromLocalPath;
+            ReferenceLineNumber = referenceLineNumber;
+            ReferenceColumnStart = referenceColumnStart;
+            ReferenceColumnEnd = referenceColumnEnd;
+            ReferenceLineText = referenceLineText;
+            Kind = kind;
             ToSymbolName = ReferenceLineText.Substring(ReferenceColumnStart, ReferenceColumnEnd - ReferenceColumnStart);
         }
     }
