@@ -26,7 +26,6 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             try
             {
                 var title = Path.GetFileName(ProjectFilePath);
-                var destinationFileName = Path.Combine(ProjectDestinationFolder, title) + ".html";
 
                 AddDeclaredSymbolToRedirectMap(SymbolIDToListOfLocationsMap, SymbolIdService.GetId(title), title, 0);
 
@@ -42,8 +41,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     ProjectLoadSettings.IgnoreMissingImports);
 
                 Log.Write("Generating MSBuildFiles for " + this.AssemblyName, ConsoleColor.Cyan);
-                var msbuildSupport = new MSBuildSupport(this);
-                msbuildSupport.Generate(ProjectFilePath, destinationFileName, msbuildProject, true);
+                var msbuildSupport = new MSBuildSupport(this, IOManager);
+                msbuildSupport.Generate(ProjectFilePath, title + ".html", msbuildProject, true);
 
                 GenerateXamlFiles(msbuildProject);
 

@@ -83,7 +83,12 @@ namespace Microsoft.SourceBrowser.IO
             }
         }
 
-        public void WriteOnce(string path, Action<StringBuilder> builder)
+        public void WriteLocalOnce(string path, Action<StringBuilder> builder)
+        {
+            WriteOnce(Path.Combine(ProjectDestinationFolder, path), builder);
+        }
+
+        private void WriteOnce(string path, Action<StringBuilder> builder)
         {
             if (!File.Exists(path))
             {
@@ -149,7 +154,7 @@ namespace Microsoft.SourceBrowser.IO
             return Directory.GetFiles(ProjectDestinationFolder, "*.html", SearchOption.AllDirectories);
         }
 
-        public IEnumerable<SymbolReferencesThingy> GetReferencesFiles()
+        public IEnumerable<SymbolReferencesThingy> GetOutgoingReferencesFiles()
         {
             return Directory.GetFiles(Path.Combine(ProjectDestinationFolder, Constants.OutgoingReferencesFileName), "*.txt")
                 .Select(fp => new SymbolReferencesThingy(fp));
@@ -241,11 +246,6 @@ namespace Microsoft.SourceBrowser.IO
             if (!ReferencesDirectoryCreated)
                 CreateReferencesDirectory();
             return new StreamWriter(Path.Combine(ProjectDestinationFolder, Constants.ReferencesFileName, symbolId + ".html"), true, Encoding.UTF8);
-        }
-
-        public bool ReferencesExists(string symbolId)
-        {
-            return File.Exists(GetOutgoingReferencesFilePath(symbolId + ".txt"));
         }
 
         public bool ReferenceDirExists()

@@ -14,12 +14,18 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         private ProjectGenerator projectGenerator;
         private Project project;
         private bool isRootProject;
+        private IO.ProjectManager IOManager;
 
         private static readonly char[] complexCharsInProperties = new char[] { '$', ':', '[', ']' };
 
-        public MSBuildSupport(ProjectGenerator projectGenerator)
+        public MSBuildSupport(ProjectGenerator projectGenerator, IO.SolutionManager ioManager)
+        : this(projectGenerator, ioManager.GetProjectManager(Constants.MSBuildFiles))
+        { }
+
+        public MSBuildSupport(ProjectGenerator projectGenerator, IO.ProjectManager ioManager)
         {
             this.projectGenerator = projectGenerator;
+            IOManager = ioManager;
         }
 
         public string EnsureFileGeneratedAndGetUrl(string localFileSystemPath, Project project)
@@ -33,12 +39,10 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 url = url.Substring(2);
             }
 
-            url = Constants.MSBuildFiles + @"\" + url;
-
             if (!SolutionGenerator.IOManager.UrlExists(url))
             {
-                var msbuildSupport = new MSBuildSupport(this.projectGenerator);
-                msbuildSupport.Generate(localFileSystemPath, Path.Combine(SolutionDestinationFolder, url), project, false);
+                var msbuildSupport = new MSBuildSupport(this.projectGenerator, IOManager.Parent);
+                msbuildSupport.Generate(localFileSystemPath, url, project, false);
             }
 
             url = "/" + url.Replace('\\', '/');

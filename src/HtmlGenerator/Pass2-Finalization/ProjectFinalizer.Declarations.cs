@@ -26,7 +26,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             foreach (var kvp in symbolIDToListOfLocationsMap)
             {
-                if (!IOManager.ReferencesExists(kvp.Item1))
+                if (!IOManager.Parent.ReferencesExists(AssemblyId, kvp.Item1))
                 {
                     foreach (var location in kvp.Item2)
                     {

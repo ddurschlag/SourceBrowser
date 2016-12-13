@@ -22,7 +22,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             this.sourceXmlFilePath = Path.GetFullPath(sourceXmlFilePath);
             this.destinationHtmlFilePath = destinationHtmlFilePath;
 
-            ioManager.WriteOnce(destinationHtmlFilePath, sb =>
+            ioManager.WriteLocalOnce(destinationHtmlFilePath, sb =>
             {
 
                 sourceText = ioManager.GetFileText(sourceXmlFilePath);
@@ -30,8 +30,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 var lineCount = ioManager.GetFileLineCount(sourceXmlFilePath);
                 var root = Parser.ParseText(sourceText);
 
-
-                var relativePathToRoot = Paths.CalculateRelativePathToRoot(destinationHtmlFilePath, solutionDestinationFolder);
+                Log.Message(solutionDestinationFolder);
+                var relativePathToRoot = Paths.CalculateRelativePathToRoot(destinationHtmlFilePath) + "../";//, solutionDestinationFolder);
 
                 var prefix = Markup.GetDocumentPrefix(Path.GetFileName(sourceXmlFilePath), relativePathToRoot, lineCount, "ix");
                 sb.Append(prefix);

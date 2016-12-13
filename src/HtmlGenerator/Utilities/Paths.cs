@@ -249,6 +249,11 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         public static string CalculateRelativePathToRoot(string filePath, string rootFolder)
         {
             var relativePath = filePath.Substring(rootFolder.Length + 1);
+            return CalculateRelativePathToRoot(relativePath);
+        }
+
+        public static string CalculateRelativePathToRoot(string relativePath)
+        {
             var depth = relativePath.Count(c => c == '\\') + relativePath.Count(c => c == '/');
             var sb = new StringBuilder();
             for (int i = 0; i < depth; i++)

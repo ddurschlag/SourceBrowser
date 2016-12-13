@@ -15,6 +15,10 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
     {
         public readonly Dictionary<string, Dictionary<string, List<Reference>>> ReferencesByTargetAssemblyAndSymbolId =
             new Dictionary<string, Dictionary<string, List<Reference>>>();
+
+        public readonly Dictionary<string, Dictionary<string, List<Reference>>> ReferencesBySourceAssemblyAndSymbolId =
+            new Dictionary<string, Dictionary<string, List<Reference>>>();
+
         public IEnumerable<string> UsedReferences { get; private set; }
 
         public void AddLegacyReferenceForMSBuild(
@@ -127,7 +131,12 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             reference.Url = linkRelativePath;
 
-            Dictionary<string, List<Reference>> referencesToAssembly = GetReferencesToAssembly(reference.ToAssemblyId);
+            AddReference(reference, GetReferencesToAssembly(reference.ToAssemblyId));
+            AddReference(reference, GetReferencesFromAssembly(reference.FromAssemblyId));
+        }
+
+        private static void AddReference(Reference reference, Dictionary<string, List<Reference>> referencesToAssembly)
+        {
             List<Reference> referencesToSymbol = GetReferencesToSymbol(reference, referencesToAssembly);
             lock (referencesToSymbol)
             {
@@ -163,6 +172,21 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
 
             return referencesToAssembly;
+        }
+
+        private Dictionary<string, List<Reference>> GetReferencesFromAssembly(string assembly)
+        {
+            Dictionary<string, List<Reference>> referencesFromAssembly;
+            lock (ReferencesBySourceAssemblyAndSymbolId)
+            {
+                if (!ReferencesBySourceAssemblyAndSymbolId.TryGetValue(assembly, out referencesFromAssembly))
+                {
+                    referencesFromAssembly = new Dictionary<string, List<Reference>>(StringComparer.OrdinalIgnoreCase);
+                    ReferencesBySourceAssemblyAndSymbolId.Add(assembly, referencesFromAssembly);
+                }
+            }
+
+            return referencesFromAssembly;
         }
 
         private static string GetLinkRelativePath(Reference reference)
@@ -249,7 +273,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
             Log.Write("All from assemblies: " + string.Join(", ", ReferencesByTargetAssemblyAndSymbolId.SelectMany(kvp => kvp.Value.SelectMany(kvp2 => kvp2.Value.Select(r => r.FromAssemblyId))).Distinct()), ConsoleColor.Cyan);
 
-            SolutionGenerator.IOManager.AppendReferences(ReferencesByTargetAssemblyAndSymbolId);
+            SolutionGenerator.IOManager.AppendReferences(ReferencesBySourceAssemblyAndSymbolId);
         }
     }
 }

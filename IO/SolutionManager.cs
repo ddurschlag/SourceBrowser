@@ -37,16 +37,35 @@ namespace Microsoft.SourceBrowser.IO
             return result;
         }
 
-        public Dictionary<string, Dictionary<string,IEnumerable<Common.Entity.Reference>>> GetProjectToSymbolToReferences()
+        private Dictionary<string, Dictionary<string, IEnumerable<Common.Entity.Reference>>> ProjectToSymbolToReferences;
+        private object ProjectToSymbolToReferencesLock = new object();
+        public Dictionary<string, Dictionary<string, IEnumerable<Common.Entity.Reference>>> GetProjectToSymbolToReferences()
         {
-            return ProjectManagers
-                .SelectMany(pm => pm.GetReferencesFiles())
+            if (ProjectToSymbolToReferences == null)
+                lock (ProjectToSymbolToReferencesLock)
+                    if (ProjectToSymbolToReferences == null)
+                        ProjectToSymbolToReferences = ProjectManagers
+                .SelectMany(pm => pm.GetOutgoingReferencesFiles())
                 .SelectMany(srt => srt.ReadAllReferences().Select(r => Tuple.Create(r, srt.SymbolId)))
                 .GroupBy(t => t.Item1.ToAssemblyId)
-                .ToDictionary(g => g.Key, g => g.GroupBy(t=>t.Item2).ToDictionary(g2=>g2.Key,g2=>g2.Select(t2=>t2.Item1)));
+                .ToDictionary(g => g.Key, g => g.GroupBy(t => t.Item2).ToDictionary(g2 => g2.Key, g2 => g2.Select(t2 => t2.Item1)));
+            return ProjectToSymbolToReferences;
         }
 
         public string SolutionDestinationFolder { get; private set; }
+
+        public bool ReferencesExists(string assemblyId, string symbolId)
+        {
+            return GetProjectToSymbolToReferences().Any(kvp => ReferencesExist(assemblyId, symbolId, kvp.Value));
+        }
+
+        private static bool ReferencesExist(string assemblyId, string symbolId, Dictionary<string, IEnumerable<Common.Entity.Reference>> referencesBySymbol)
+        {
+            IEnumerable<Common.Entity.Reference> references;
+            return
+                referencesBySymbol.TryGetValue(symbolId, out references)
+            && references.Any(r => r.ToAssemblyId == assemblyId);
+        }
 
         public bool UrlExists(string url)
         {
@@ -130,11 +149,9 @@ namespace Microsoft.SourceBrowser.IO
         {
             Common.Log.Write("References data files...", ConsoleColor.White);
 
-            Common.Log.Write("All from assemblies: " + string.Join(", ", references.SelectMany(kvp => kvp.Value.SelectMany(kvp2 => kvp2.Value.Select(r => r.FromAssemblyId))).Distinct()), ConsoleColor.Cyan);
-
-            foreach (var referencesToAssembly in references)
+            foreach (var referencesFromAssembly in references)
             {
-                GetProjectManager(referencesToAssembly.Key).AppendReferences(referencesToAssembly.Value);
+                GetProjectManager(referencesFromAssembly.Key).AppendReferences(referencesFromAssembly.Value);
             }
         }
 
@@ -142,11 +159,9 @@ namespace Microsoft.SourceBrowser.IO
         {
             Common.Log.Write("References data files...", ConsoleColor.White);
 
-            Common.Log.Write("All from assemblies: " + string.Join(", ", references.SelectMany(kvp => kvp.Value.SelectMany(kvp2 => kvp2.Value.Select(r => r.FromAssemblyId))).Distinct()), ConsoleColor.Cyan);
-
-            foreach (var referencesToAssembly in references)
+            foreach (var referencesFromAssembly in references)
             {
-                GetProjectManager(referencesToAssembly.Key).AppendReferences(referencesToAssembly.Value);
+                GetProjectManager(referencesFromAssembly.Key).AppendReferences(referencesFromAssembly.Value);
             }
         }
 

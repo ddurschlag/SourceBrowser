@@ -212,8 +212,9 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 try
                 {
                     Dictionary<string, IEnumerable<Common.Entity.Reference>> symbolIdToReferences;
-                    if (referenceLookup.TryGetValue(project.AssemblyId, out symbolIdToReferences))
-                        project.CreateReferencesFiles(symbolIdToReferences);
+                    if (!referenceLookup.TryGetValue(project.AssemblyId, out symbolIdToReferences))
+                        symbolIdToReferences = new Dictionary<string, IEnumerable<Common.Entity.Reference>>();
+                    project.CreateReferencesFiles(symbolIdToReferences);
                 }
                 catch (Exception ex)
                 {

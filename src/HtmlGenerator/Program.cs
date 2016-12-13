@@ -180,6 +180,9 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 }
 
                 IndexSolutions(projects, properties, federation);
+                Console.WriteLine("Press enter to finalize projects");
+                Console.ReadLine();
+
                 FinalizeProjects(emitAssemblyList, federation);
             }
             if (waitAtEnd)

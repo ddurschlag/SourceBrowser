@@ -104,9 +104,6 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 url = url.Substring(2);
             }
 
-            url = Constants.TypeScriptFiles + @"\" + url;
-
-            url = Path.Combine(Paths.SolutionDestinationFolder, url);
             return url;
         }
 
@@ -116,7 +113,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             ClassifiedRange[] syntacticRanges,
             ClassifiedRange[] semanticRanges)
         {
-            IOManager.WriteOnce(destinationHtmlFilePath, sb =>
+            IOManager.WriteLocalOnce(destinationHtmlFilePath, sb =>
             {
 
                 Log.Write(destinationHtmlFilePath);
