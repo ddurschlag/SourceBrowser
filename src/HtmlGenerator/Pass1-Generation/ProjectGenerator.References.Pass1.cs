@@ -84,16 +84,13 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             string symbolId,
             ReferenceKind kind)
         {
-            var documentDestinationPath = IOManager.GetLegacyDocumentDestinationPath(documentDestination);
+            var documentDestinationPath = Path.Combine(documentDestination.Folders.Concat(new[] { documentDestination.FileName }).ToArray());// IOManager.GetLegacyDocumentDestinationPath(documentDestination);
             AddReference(ref lineText, ref referenceStartOnLine, referenceLength, lineNumber, fromAssemblyName, toAssemblyName, symbol, symbolId, kind, documentDestinationPath);
         }
 
         private void AddReference(ref string lineText, ref int referenceStartOnLine, int referenceLength, int lineNumber, string fromAssemblyName, string toAssemblyName, ISymbol symbol, string symbolId, ReferenceKind kind, string documentDestinationPath)
         {
-            string localPath = Paths.MakeRelativeToFolder(
-                documentDestinationPath,
-                Path.Combine(SolutionGenerator.SolutionDestinationFolder, fromAssemblyName));
-            localPath = Path.ChangeExtension(localPath, null);
+            string localPath = documentDestinationPath;
 
             int referenceEndOnLine = referenceStartOnLine + referenceLength;
 

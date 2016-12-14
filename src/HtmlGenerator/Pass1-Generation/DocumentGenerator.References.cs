@@ -624,10 +624,5 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         }
 
         private IO.ProjectManager IOManager { get { return projectGenerator.IOManager; } }
-
-        private string SolutionDestinationFolder
-        {
-            get { return projectGenerator.SolutionGenerator.SolutionDestinationFolder; }
-        }
     }
 }

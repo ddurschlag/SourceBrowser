@@ -15,7 +15,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         protected string sourceText;
         protected int[] lineLengths;
 
-        public void Generate(string sourceXmlFilePath, string destinationHtmlFilePath, string solutionDestinationFolder, IO.ProjectManager ioManager)
+        public void Generate(string sourceXmlFilePath, string destinationHtmlFilePath, IO.ProjectManager ioManager)
         {
             Log.Write(destinationHtmlFilePath);
 
@@ -30,7 +30,6 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 var lineCount = ioManager.GetFileLineCount(sourceXmlFilePath);
                 var root = Parser.ParseText(sourceText);
 
-                Log.Message(solutionDestinationFolder);
                 var relativePathToRoot = Paths.CalculateRelativePathToRoot(destinationHtmlFilePath) + "../";//, solutionDestinationFolder);
 
                 var prefix = Markup.GetDocumentPrefix(Path.GetFileName(sourceXmlFilePath), relativePathToRoot, lineCount, "ix");

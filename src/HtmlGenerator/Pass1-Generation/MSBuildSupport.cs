@@ -53,7 +53,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             this.project = project;
             this.isRootProject = isRootProject;
-            base.Generate(localFileSystemFilePath, htmlFilePath, SolutionDestinationFolder, projectGenerator.IOManager);
+            base.Generate(localFileSystemFilePath, htmlFilePath, projectGenerator.IOManager);
         }
 
         protected override string GetAssemblyName()
@@ -69,14 +69,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         protected override string GetDisplayName()
         {
-            var result = Path.GetFileNameWithoutExtension(destinationHtmlFilePath);
-            if (!isRootProject)
-            {
-                var lengthOfPrefixToTrim = SolutionDestinationFolder.Length + Constants.MSBuildFiles.Length + 2;
-                result = destinationHtmlFilePath.Substring(lengthOfPrefixToTrim, destinationHtmlFilePath.Length - lengthOfPrefixToTrim - 5); // strip ".html"
-            }
-
-            return result;
+            return Path.GetFileNameWithoutExtension(destinationHtmlFilePath);
         }
 
         protected override string ProcessRange(ClassifiedRange range, string text)
@@ -673,14 +666,6 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
 
             return text;
-        }
-
-        private string SolutionDestinationFolder
-        {
-            get
-            {
-                return SolutionGenerator.SolutionDestinationFolder;
-            }
         }
 
         private SolutionGenerator SolutionGenerator
