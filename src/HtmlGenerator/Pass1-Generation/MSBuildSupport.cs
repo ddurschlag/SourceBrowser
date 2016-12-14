@@ -53,7 +53,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             this.project = project;
             this.isRootProject = isRootProject;
-            base.Generate(localFileSystemFilePath, htmlFilePath, projectGenerator.IOManager);
+            base.Generate(localFileSystemFilePath, htmlFilePath, IOManager);
         }
 
         protected override string GetAssemblyName()
