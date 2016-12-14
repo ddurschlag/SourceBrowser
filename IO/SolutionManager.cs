@@ -10,13 +10,16 @@ namespace Microsoft.SourceBrowser.IO
     public class SolutionManager : IOManager
     {
         private Dictionary<string, ProjectManager> _ProjectManagers = new Dictionary<string, ProjectManager>();
+        private object _ProjectManagersLock = new object();
         private bool WriteDocumentsToDisk;
+        private bool CreateFoldersOnDisk;
         private int Parallelism;
 
-        public SolutionManager(string solutionDestinationFolder, bool writeDocumentsToDisk = true, int parallelism = -1)
+        public SolutionManager(string solutionDestinationFolder, bool writeDocumentsToDisk = true, bool createFoldersOnDisk = true, int parallelism = -1)
         {
             SolutionDestinationFolder = solutionDestinationFolder;
             WriteDocumentsToDisk = writeDocumentsToDisk;
+            CreateFoldersOnDisk = createFoldersOnDisk;
             Parallelism = (parallelism == -1) ? System.Environment.ProcessorCount : parallelism;
         }
 
@@ -25,14 +28,42 @@ namespace Microsoft.SourceBrowser.IO
             get { return _ProjectManagers.Values; }
         }
 
+        public void EnsureProjectManager(string assemblyId)
+        {
+            if (!_ProjectManagers.ContainsKey(assemblyId))
+            {
+                lock (_ProjectManagersLock)
+                {
+                    if (!_ProjectManagers.ContainsKey(assemblyId))
+                    {
+                        _ProjectManagers.Add(assemblyId, ManufactureProjectManager(assemblyId));
+                    }
+                }
+            }
+        }
+
+        private ProjectManager ManufactureProjectManager(string assemblyId)
+        {
+            var result = new ProjectManager(this, GetProjectDestinationPath(assemblyId), assemblyId, WriteDocumentsToDisk, Parallelism);
+            if (CreateFoldersOnDisk)
+                result.CreateDirectory();
+            return result;
+        }
+
         public ProjectManager GetProjectManager(string assemblyId)
         {
             Common.Log.Write("Retrieving project manager " + assemblyId, ConsoleColor.Cyan);
             ProjectManager result;
             if (!_ProjectManagers.TryGetValue(assemblyId, out result))
             {
-                result = new ProjectManager(this, GetProjectDestinationPath(assemblyId), assemblyId, WriteDocumentsToDisk, Parallelism);
-                _ProjectManagers.Add(assemblyId, result);
+                lock (_ProjectManagersLock)
+                {
+                    if (!_ProjectManagers.TryGetValue(assemblyId, out result))
+                    {
+                        result = ManufactureProjectManager(assemblyId);
+                        _ProjectManagers.Add(assemblyId, result);
+                    }
+                }
             }
             return result;
         }
@@ -45,8 +76,7 @@ namespace Microsoft.SourceBrowser.IO
                 lock (ProjectToSymbolToReferencesLock)
                     if (ProjectToSymbolToReferences == null)
                         ProjectToSymbolToReferences = ProjectManagers
-                .SelectMany(pm => pm.GetOutgoingReferencesFiles())
-                .SelectMany(srt => srt.ReadAllReferences().Select(r => Tuple.Create(r, srt.SymbolId)))
+                .SelectMany(pm => pm.GetOutgoingReferencesToSymbolIds())
                 .GroupBy(t => t.Item1.ToAssemblyId)
                 .ToDictionary(g => g.Key, g => g.GroupBy(t => t.Item2).ToDictionary(g2 => g2.Key, g2 => g2.Select(t2 => t2.Item1)));
             return ProjectToSymbolToReferences;

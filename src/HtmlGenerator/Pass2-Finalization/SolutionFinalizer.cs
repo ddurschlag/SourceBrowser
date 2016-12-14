@@ -73,24 +73,20 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             //foreach (var directory in directories)
             foreach (var pm in IOManager.ProjectManagers)
             {
-                //                if (Directory.Exists(referenceDirectory))
-                if (pm.ReferenceDirExists())
+                ProjectFinalizer finalizer = null;
+                try
                 {
-                    ProjectFinalizer finalizer = null;
-                    try
-                    {
-                        finalizer = new ProjectFinalizer(this, pm);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Exception(ex, "Failure when creating a ProjectFinalizer for " + pm.AssemblyId);
-                        finalizer = null;
-                    }
+                    finalizer = new ProjectFinalizer(this, pm);
+                }
+                catch (Exception ex)
+                {
+                    Log.Exception(ex, "Failure when creating a ProjectFinalizer for " + pm.AssemblyId);
+                    finalizer = null;
+                }
 
-                    if (finalizer != null)
-                    {
-                        yield return finalizer;
-                    }
+                if (finalizer != null)
+                {
+                    yield return finalizer;
                 }
             }
         }

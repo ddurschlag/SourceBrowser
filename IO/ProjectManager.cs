@@ -154,10 +154,18 @@ namespace Microsoft.SourceBrowser.IO
             return Directory.GetFiles(ProjectDestinationFolder, "*.html", SearchOption.AllDirectories);
         }
 
-        public IEnumerable<SymbolReferencesThingy> GetOutgoingReferencesFiles()
+        public IEnumerable<Tuple<Common.Entity.Reference, string>> GetOutgoingReferencesToSymbolIds()
         {
-            return Directory.GetFiles(Path.Combine(ProjectDestinationFolder, Constants.OutgoingReferencesFileName), "*.txt")
-                .Select(fp => new SymbolReferencesThingy(fp));
+            return GetMaybeFiles(Path.Combine(ProjectDestinationFolder, Constants.OutgoingReferencesFileName), "*.txt")
+                .Select(fp => new SymbolReferencesThingy(fp))
+                .SelectMany(srt => srt.ReadAllReferences().Select(r => Tuple.Create(r, srt.SymbolId)));
+        }
+
+        private static string[] GetMaybeFiles(string path, string filter)
+        {
+            if (Directory.Exists(path))
+                return Directory.GetFiles(path, filter);
+            return new string[0];
         }
 
         public IEnumerable<string> GetDeclaredSymbolLines()
@@ -282,6 +290,7 @@ namespace Microsoft.SourceBrowser.IO
                         {
                             foreach (var reference in referencesToSymbol.Value)
                             {
+                                Parent.EnsureProjectManager(reference.ToAssemblyId);
                                 writer.Write(reference);
                             }
                         }
