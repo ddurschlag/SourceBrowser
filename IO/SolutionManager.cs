@@ -25,7 +25,7 @@ namespace Microsoft.SourceBrowser.IO
 
         public IEnumerable<ProjectManager> ProjectManagers
         {
-            get { return _ProjectManagers.Values; }
+            get { return _ProjectManagers.Keys.Select(GetProjectManager); }
         }
 
         public void EnsureProjectManager(string assemblyId)
@@ -44,10 +44,7 @@ namespace Microsoft.SourceBrowser.IO
 
         private ProjectManager ManufactureProjectManager(string assemblyId)
         {
-            var result = new ProjectManager(this, GetProjectDestinationPath(assemblyId), assemblyId, WriteDocumentsToDisk, Parallelism);
-            if (CreateFoldersOnDisk)
-                result.CreateDirectory();
-            return result;
+            return new ProjectManager(this, GetProjectDestinationPath(assemblyId), assemblyId, WriteDocumentsToDisk, Parallelism);
         }
 
         public ProjectManager GetProjectManager(string assemblyId)
@@ -65,6 +62,8 @@ namespace Microsoft.SourceBrowser.IO
                     }
                 }
             }
+            if (CreateFoldersOnDisk)
+                result.CreateDirectory();
             return result;
         }
 

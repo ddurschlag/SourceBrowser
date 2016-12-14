@@ -123,9 +123,15 @@ namespace Microsoft.SourceBrowser.IO
             return File.ReadAllLines(fileName);
         }
 
+        private bool _DirectoryCreated = false;
         public void CreateDirectory()
         {
-            Directory.CreateDirectory(ProjectDestinationFolder);
+            //CreateDirectory is safe, but this prevents unnecessary IO operations.
+            if (!_DirectoryCreated)
+            {
+                Directory.CreateDirectory(ProjectDestinationFolder);
+                _DirectoryCreated = true;
+            }
         }
 
         public void CreateDirectory(Destination d)
