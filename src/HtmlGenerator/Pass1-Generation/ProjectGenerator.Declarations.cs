@@ -67,36 +67,69 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             Log.Write("Declarations...");
 
-            var lines = new List<string>();
+            IOManager.WriteDeclaredSymbols(
+                GetDeclaredSymbolLines(DeclaredSymbols).Concat(GetOtherFileLines(OtherFiles)),
+                overwrite
+            );
+        }
 
-            if (DeclaredSymbols != null)
+        private static IEnumerable<Common.Entity.DeclaredSymbolInfo> GetOtherFileLines(IEnumerable<string> otherFiles)
+        {
+            if (otherFiles != null)
             {
-                foreach (var declaredSymbol in DeclaredSymbols
-                    .OrderBy(s => SymbolIdService.GetName(s.Key))
-                    .ThenBy(s => s.Value))
+                foreach (var document in otherFiles.OrderBy(d => d))
                 {
-                    lines.Add(string.Join(";",
-                        SymbolIdService.GetName(declaredSymbol.Key), // symbol name
-                        declaredSymbol.Value, // 8-byte symbol ID
-                        SymbolKindText.GetSymbolKind(declaredSymbol.Key), // kind (e.g. "class")
-                        Markup.EscapeSemicolons(SymbolIdService.GetDisplayString(declaredSymbol.Key)), // symbol full name and signature
-                        SymbolIdService.GetGlyphNumber(declaredSymbol.Key))); // icon number
-                }
-            }
-
-            if (OtherFiles != null)
-            {
-                foreach (var document in OtherFiles.OrderBy(d => d))
-                {
-                    lines.Add(string.Join(";",
-                        Path.GetFileName(document),
+                    yield return new Utilities.DeclaredSymbolInfoFactory().Manufacture(
                         SymbolIdService.GetId(document),
+                        Path.GetFileName(document),
                         "file",
                         Markup.EscapeSemicolons(document),
-                        Serialization.GetIconForExtension(document)));
+                        Serialization.GetIconForExtension(document)
+                    );
+
+
+                    //yield return string.Join(";",
+                    //    Path.GetFileName(document),
+                    //    SymbolIdService.GetId(document),
+                    //    "file",
+                    //    Markup.EscapeSemicolons(document),
+                    //    Serialization.GetIconForExtension(document));
                 }
             }
-            IOManager.WriteDeclaredSymbols(lines, overwrite);
+        }
+
+        private IEnumerable<Common.Entity.DeclaredSymbolInfo> GetDeclaredSymbolLines(IEnumerable<KeyValuePair<ISymbol, string>> declaredSymbols)
+        {
+            if (declaredSymbols != null)
+            {
+                foreach (var declaredSymbol in declaredSymbols
+                    .OrderBy(s => SymbolIdService.GetName(s.Key))
+                    .ThenBy(s => SymbolIdService.GetId(s.Key)))
+                {
+                    if (declaredSymbol.Value != SymbolIdService.GetId(declaredSymbol.Key))
+                    {
+                        Console.WriteLine("Inconsistency:");
+                        Console.WriteLine(declaredSymbol.Value);
+                        Console.WriteLine(SymbolIdService.GetId(declaredSymbol.Key));
+                        throw new Exception("INCONSISTENCY!");
+                    }
+
+                    yield return new Utilities.DeclaredSymbolInfoFactory().Manufacture(
+                        SymbolIdService.GetId(declaredSymbol.Key),
+                        SymbolIdService.GetName(declaredSymbol.Key),
+                        SymbolKindText.GetSymbolKind(declaredSymbol.Key),
+                        Markup.EscapeSemicolons(SymbolIdService.GetDisplayString(declaredSymbol.Key)),
+                        SymbolIdService.GetGlyphNumber(declaredSymbol.Key).ToString()
+                    );
+
+                    //yield return string.Join(";",
+                    //    SymbolIdService.GetName(declaredSymbol.Key), // symbol name
+                    //    declaredSymbol.Value, // 8-byte symbol ID
+                    //    SymbolKindText.GetSymbolKind(declaredSymbol.Key), // kind (e.g. "class")
+                    //    Markup.EscapeSemicolons(SymbolIdService.GetDisplayString(declaredSymbol.Key)), // symbol full name and signature
+                    //    SymbolIdService.GetGlyphNumber(declaredSymbol.Key)); // icon number
+                }
+            }
         }
 
         public void GenerateSymbolIDToListOfDeclarationLocationsMap(

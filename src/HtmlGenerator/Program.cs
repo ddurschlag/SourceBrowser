@@ -304,7 +304,6 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 {
                     using (var solutionGenerator = new SolutionGenerator(
                         path,
-                        Paths.SolutionDestinationFolder,
                         IOManager,
                         properties: properties.ToImmutableDictionary(),
                         federation: federation))

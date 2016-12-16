@@ -52,6 +52,7 @@
     <Compile Include="ReferenceWriter.cs" />
     <Compile Include="SolutionManager.cs" />
     <Compile Include="SymbolReferencesThingy.cs" />
+    <Compile Include="TextDeclaredSymbolInfoWriter.cs" />
     <Compile Include="Utility.cs" />
   </ItemGroup>
   <ItemGroup>

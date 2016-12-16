@@ -20,7 +20,6 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         public Dictionary<ISymbol, ISymbol> BaseMembers { get; private set; }
         public MultiDictionary<ISymbol, ISymbol> ImplementedInterfaceMembers { get; set; }
 
-        public string ProjectDestinationFolder { get; private set; }
         public IO.ProjectManager IOManager { get; private set; }
         public string AssemblyName { get; private set; }
         public SolutionGenerator SolutionGenerator { get; private set; }
@@ -122,10 +121,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     return;
                 }
 
-                ProjectDestinationFolder = GetProjectDestinationPath(AssemblyName, SolutionGenerator.SolutionDestinationFolder);
                 IOManager = SolutionGenerator.IOManager.GetProjectManager(AssemblyName);
-
-                Log.Write(ProjectDestinationFolder, ConsoleColor.DarkCyan);
 
                 ProjectSourcePath = Paths.MakeRelativeToFolder(ProjectFilePath, SolutionGenerator.SolutionSourceFolder);
 

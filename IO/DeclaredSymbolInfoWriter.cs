@@ -7,14 +7,14 @@ using System.IO;
 
 namespace Microsoft.SourceBrowser.IO
 {
-    public class DeclaredSymbolInfoWriter : IDisposable
+    public class BinaryDeclaredSymbolInfoWriter : IDisposable
     {
-        public DeclaredSymbolInfoWriter(Stream s, Common.Huffman huffman, bool leaveOpen = false)
+        public BinaryDeclaredSymbolInfoWriter(Stream s, Common.Huffman huffman, bool leaveOpen = false)
         : this(new BinaryWriter(s, Encoding.Default, leaveOpen), huffman, false)
         {
         }
 
-        public DeclaredSymbolInfoWriter(BinaryWriter writer, Common.Huffman huffman, bool leaveOpen = false)
+        public BinaryDeclaredSymbolInfoWriter(BinaryWriter writer, Common.Huffman huffman, bool leaveOpen = false)
         {
             Writer = writer;
             Huffman = huffman;

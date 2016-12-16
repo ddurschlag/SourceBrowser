@@ -14,7 +14,6 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
     public partial class SolutionGenerator : IDisposable
     {
         public string SolutionSourceFolder { get; private set; }
-        public string SolutionDestinationFolder { get; private set; }
         public string ProjectFilePath { get; private set; }
 
         public IO.SolutionManager IOManager { get; private set; }
@@ -34,14 +33,12 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         public SolutionGenerator(
             string solutionFilePath,
-            string solutionDestinationFolder,
             IO.SolutionManager ioManager,
             string serverPath = null,
             ImmutableDictionary<string, string> properties = null,
             Federation federation = null)
         {
             this.SolutionSourceFolder = Path.GetDirectoryName(solutionFilePath);
-            this.SolutionDestinationFolder = solutionDestinationFolder;
             IOManager = ioManager;
             this.ProjectFilePath = solutionFilePath;
             this.ServerPath = serverPath;
@@ -307,7 +304,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 }
             }
 
-            new TypeScriptSupport().Generate(typeScriptFiles, SolutionDestinationFolder, IOManager);
+            new TypeScriptSupport().Generate(typeScriptFiles, IOManager);
 
             if (currentBatch.Length > 1)
             {

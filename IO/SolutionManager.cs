@@ -276,7 +276,7 @@ namespace Microsoft.SourceBrowser.IO
                 using (var writer = new BinaryWriter(fileStream))
                 {
                     writer.Write(declaredSymbols.Count);
-                    using (var dsiWriter = new DeclaredSymbolInfoWriter(writer, huffman))
+                    using (var dsiWriter = new BinaryDeclaredSymbolInfoWriter(writer, huffman))
                     {
                         foreach (var declaredSymbol in declaredSymbols)
                         {

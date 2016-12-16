@@ -14,11 +14,11 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
     {
         private static readonly HashSet<string> alreadyProcessed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private Dictionary<string, List<Reference>> references;
-        private List<string> declarations;
+        private List<DeclaredSymbolInfo> declarations;
         public SymbolIndex SymbolIDToListOfLocationsMap { get; private set; }
         private IO.ProjectManager IOManager;
 
-        public void Generate(IEnumerable<string> typeScriptFiles, string solutionDestinationFolder, IO.SolutionManager solutionManager)
+        public void Generate(IEnumerable<string> typeScriptFiles, IO.SolutionManager solutionManager)
         {
             IOManager = solutionManager.GetProjectManager(Constants.TypeScriptFiles);
 
@@ -27,9 +27,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 return;
             }
 
-            var projectDestinationFolder = Path.Combine(solutionDestinationFolder, Constants.TypeScriptFiles).MustBeAbsolute();
-
-            declarations = new List<string>();
+            declarations = new List<DeclaredSymbolInfo>();
             references = new Dictionary<string, List<Reference>>(StringComparer.OrdinalIgnoreCase);
             SymbolIDToListOfLocationsMap = new SymbolIndex();
 
@@ -107,6 +105,14 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             return url;
         }
 
+        private static string Repeat(string s, int count)
+        {
+            var sb = new StringBuilder(s.Length * count);
+            for (var i = 0; i < count; i++)
+                sb.Append(s);
+            return sb.ToString();
+        }
+
         private void Generate(
             string sourceFilePath,
             string destinationHtmlFilePath,
@@ -117,16 +123,16 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             {
 
                 Log.Write(destinationHtmlFilePath);
-                
+
                 var text = IOManager.GetFileText(sourceFilePath);
                 var lineCount = IOManager.GetFileLineCount(sourceFilePath);
                 var lineLengths = TextUtilities.GetLineLengths(text);
 
                 var ranges = PrepareRanges(syntacticRanges, semanticRanges, text);
 
-                var relativePathToRoot = Paths.CalculateRelativePathToRoot(destinationHtmlFilePath, Paths.SolutionDestinationFolder);
+                var relativeWebPathToRoot = Repeat("../", destinationHtmlFilePath.Count(c => c == '\\') + 1);
 
-                var prefix = Markup.GetDocumentPrefix(Path.GetFileName(sourceFilePath), relativePathToRoot, lineCount, "ix");
+                var prefix = Markup.GetDocumentPrefix(Path.GetFileName(sourceFilePath), relativeWebPathToRoot, lineCount, "ix");
                 sb.Append(prefix);
 
                 var displayName = GetDisplayName(destinationHtmlFilePath);
@@ -339,11 +345,10 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             var html = range.text;
             html = Markup.HtmlEscape(html);
 
-            var localRelativePath = destinationFilePath.Substring(
-                Path.Combine(
-                    Paths.SolutionDestinationFolder,
-                    Constants.TypeScriptFiles).Length + 1);
-            localRelativePath = localRelativePath.Substring(0, localRelativePath.Length - ".html".Length);
+            var localRelativePath = Path.Combine(
+                Path.GetDirectoryName(destinationFilePath),
+                Path.GetFileNameWithoutExtension(destinationFilePath)
+            );
 
             string classAttributeValue = GetSpanClass(range.classification);
             HtmlElementInfo hyperlinkInfo = GenerateLinks(range, destinationFilePath, localSymbolIdMap);
@@ -472,13 +477,21 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                         searchString = searchString.StripQuotes();
                         if (IsWellFormed(searchString))
                         {
-                            var declaration = string.Join(";",
-                                searchString, // symbol name
-                                definitionSymbolId, // 8-byte symbol ID
-                                range.definitionKind, // kind (e.g. "class")
-                                Markup.EscapeSemicolons(range.fullName), // symbol full name and signature
-                                GetGlyph(range.definitionKind) // glyph number
+                            var declaration = new Utilities.DeclaredSymbolInfoFactory().Manufacture(
+                                definitionSymbolId,
+                                searchString,
+                                range.definitionKind,
+                                Markup.EscapeSemicolons(range.fullName),
+                                GetGlyph(range.definitionKind)
                             );
+
+                            //var declaration = string.Join(";",
+                            //    searchString, // symbol name
+                            //    definitionSymbolId, // 8-byte symbol ID
+                            //    range.definitionKind, // kind (e.g. "class")
+                            //    Markup.EscapeSemicolons(range.fullName), // symbol full name and signature
+                            //    GetGlyph(range.definitionKind) // glyph number
+                            //);
                             declarations.Add(declaration);
                         }
                     }
@@ -658,11 +671,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         private string GetDisplayName(string destinationHtmlFilePath)
         {
-            var result = Path.GetFileNameWithoutExtension(destinationHtmlFilePath);
-            var lengthOfPrefixToTrim = Paths.SolutionDestinationFolder.Length + Constants.TypeScriptFiles.Length + 2;
-            result = destinationHtmlFilePath.Substring(lengthOfPrefixToTrim, destinationHtmlFilePath.Length - lengthOfPrefixToTrim - 5); // strip ".html"
-
-            return result;
+            return Path.GetFileNameWithoutExtension(destinationHtmlFilePath);
         }
     }
 }

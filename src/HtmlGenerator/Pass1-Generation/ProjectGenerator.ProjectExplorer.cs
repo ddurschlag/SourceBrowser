@@ -174,7 +174,6 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             {
                 var fullPath = Path.Combine(Path.GetDirectoryName(this.ProjectFilePath), document);
                 var destination = TypeScriptSupport.GetDestinationFilePath(fullPath);
-                destination = destination.Substring(this.SolutionGenerator.SolutionDestinationFolder.Length + 1);
                 destination = destination.Replace('\\', '/');
                 destination = "/" + destination;
                 return destination;

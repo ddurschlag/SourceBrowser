@@ -65,14 +65,6 @@ namespace Microsoft.SourceBrowser.Common.Entity
             return description.Substring(0, lastDot);
         }
 
-        public int Weight
-        {
-            get
-            {
-                return MatchLevel * 10 + KindRank;
-            }
-        }
-
         public bool Equals(DeclaredSymbolInfo other)
         {
             if (other == null)

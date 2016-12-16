@@ -35,13 +35,13 @@ namespace Microsoft.SourceBrowser.IO
 
         public IEnumerable<string> CallTypescriptAnalyzer(string argumentJson)
         {
-            var output = Path.Combine(Common.Paths.BaseAppFolder, "output");
+            var output = Path.Combine(Directory.GetCurrentDirectory(), "output");
             if (Directory.Exists(output))
             {
                 Directory.Delete(output, recursive: true);
             }
 
-            var argumentsPath = Path.Combine(Common.Paths.BaseAppFolder, "TypeScriptAnalyzerArguments.json");
+            var argumentsPath = Path.Combine(Directory.GetCurrentDirectory(), "TypeScriptAnalyzerArguments.json");
             File.WriteAllText(argumentsPath, argumentJson);
 
             var analyzerJs = Path.Combine(Common.Paths.BaseAppFolder, @"TypeScriptSupport\analyzer.js");
@@ -429,16 +429,17 @@ namespace Microsoft.SourceBrowser.IO
             File.AppendAllText(Path.Combine(ProjectDestinationFolder, name + ".txt"), string.Empty);
         }
 
-        public void WriteDeclaredSymbols(IEnumerable<string> lines, bool overwrite = false)
+        public void WriteDeclaredSymbols(IEnumerable<Common.Entity.DeclaredSymbolInfo> symbols, bool overwrite = false)
         {
-            var fileName = Path.Combine(ProjectDestinationFolder, Constants.DeclaredSymbolsFileName + ".txt");
-            if (overwrite)
+            using (var sw = new StreamWriter(Path.Combine(ProjectDestinationFolder, Constants.DeclaredSymbolsFileName + ".txt"), !overwrite))
             {
-                File.WriteAllLines(fileName, lines, Encoding.UTF8);
-            }
-            else
-            {
-                File.AppendAllLines(fileName, lines, Encoding.UTF8);
+                using (var dsiw = new TextDeclaredSymbolInfoWriter(sw))
+                {
+                    foreach (var symbol in symbols)
+                    {
+                        dsiw.Write(symbol);
+                    }
+                }
             }
         }
 

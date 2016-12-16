@@ -32,19 +32,30 @@ namespace Microsoft.SourceBrowser.HtmlGenerator.Utilities
             var parts = separated.Split(';');
             if (parts.Length == 5)
             {
-                return new DeclaredSymbolInfo(
-                    Common.TextUtilities.HexStringToULong(parts[1]),
+                return Manufacture(
+                    parts[1],
                     string.Intern(parts[0]),
                     string.Intern(parts[2]),
-                    SymbolKindText.Rank(string.Intern(parts[2])),
                     parts[3],
-                    ParseGlyph(parts[4])
+                    parts[4]
                 );
             }
             else
             {
                 return new DeclaredSymbolInfo(glyph, assemblyNumber);
             }
+        }
+
+        public DeclaredSymbolInfo Manufacture(string hexStringId, string name, string kind, string description, string glyph)
+        {
+            return new DeclaredSymbolInfo(
+                Common.TextUtilities.HexStringToULong(hexStringId),
+                name,
+                kind,
+                SymbolKindText.Rank(kind),
+                description,
+                ParseGlyph(glyph)
+            );
         }
 
         private static ushort ParseGlyph(string part)

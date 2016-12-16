@@ -119,7 +119,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             var relativePath = Paths.MakeRelativeToFolder(sourceXmlFile, projectSourceFolder);
             relativePath = relativePath.Replace("..", "parent");
 
-            var destinationHtmlFile = Path.Combine(ProjectDestinationFolder, relativePath) + ".html";
+            var destinationHtmlFile = relativePath + ".html";
 
             var xamlSupport = new XamlSupport(this);
             xamlSupport.GenerateXaml(sourceXmlFile, destinationHtmlFile, relativePath);
