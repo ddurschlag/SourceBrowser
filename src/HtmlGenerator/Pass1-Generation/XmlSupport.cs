@@ -12,23 +12,23 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
     {
         protected string sourceXmlFilePath;
         protected string destinationHtmlFilePath;
-        protected string sourceText;
+        protected string SourceText;
         protected int[] lineLengths;
 
-        public void Generate(string sourceXmlFilePath, string destinationHtmlFilePath, IO.ProjectManager ioManager)
+        //todo: Get rid of filepath
+        public void Generate(string filePath, string sourceText, int lineCount, string destinationHtmlFilePath, IO.ProjectManager ioManager)
         {
             Log.Write(destinationHtmlFilePath);
 
-            this.sourceXmlFilePath = Path.GetFullPath(sourceXmlFilePath);
+            this.sourceXmlFilePath = Path.GetFullPath(filePath);
             this.destinationHtmlFilePath = destinationHtmlFilePath;
+            SourceText = sourceText;
 
             ioManager.WriteLocalOnce(destinationHtmlFilePath, sb =>
             {
 
-                sourceText = ioManager.GetFileText(sourceXmlFilePath);
-                lineLengths = TextUtilities.GetLineLengths(sourceText);
-                var lineCount = ioManager.GetFileLineCount(sourceXmlFilePath);
-                var root = Parser.ParseText(sourceText);
+                lineLengths = TextUtilities.GetLineLengths(SourceText);
+                var root = Parser.ParseText(SourceText);
 
                 var relativePathToRoot = Paths.CalculateRelativePathToRoot(destinationHtmlFilePath) + "../";//, solutionDestinationFolder);
 
@@ -53,18 +53,18 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 ClassifierVisitor.Visit(
                     root,
                     0,
-                    sourceText.Length,
+                    SourceText.Length,
                     (start, length, node, classification) =>
                     {
-                        var line = TextUtilities.GetLineFromPosition(start, sourceText);
-                        var lineText = sourceText.Substring(line.Item1, line.Item2);
+                        var line = TextUtilities.GetLineFromPosition(start, SourceText);
+                        var lineText = SourceText.Substring(line.Item1, line.Item2);
 
                         ranges.Add(
                             new ClassifiedRange
                             {
                                 Classification = classification,
                                 Node = node,
-                                Text = sourceText.Substring(start, length),
+                                Text = SourceText.Substring(start, length),
                                 LineText = lineText,
                                 LineStart = line.Item1,
                                 LineNumber = TextUtilities.GetLineNumber(start, lineLengths),
@@ -74,7 +74,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     });
 
                 ranges = RangeUtilities.FillGaps(
-                    sourceText,
+                    SourceText,
                     ranges,
                     r => r.Start,
                     r => r.Length,

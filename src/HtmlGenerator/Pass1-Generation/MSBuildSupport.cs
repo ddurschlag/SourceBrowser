@@ -53,7 +53,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             this.project = project;
             this.isRootProject = isRootProject;
-            base.Generate(localFileSystemFilePath, htmlFilePath, IOManager);
+            base.Generate(localFileSystemFilePath, IOManager.GetFileText(localFileSystemFilePath), IOManager.GetFileLineCount(localFileSystemFilePath), htmlFilePath, IOManager);
         }
 
         protected override string GetAssemblyName()
@@ -560,9 +560,9 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     }
 
                     var currentPosition = range.Start + lengthSoFar;
-                    var line = TextUtilities.GetLineFromPosition(currentPosition, sourceText);
+                    var line = TextUtilities.GetLineFromPosition(currentPosition, SourceText);
                     var lineNumber = TextUtilities.GetLineNumber(currentPosition, this.lineLengths);
-                    var lineText = sourceText.Substring(line.Item1, line.Item2);
+                    var lineText = SourceText.Substring(line.Item1, line.Item2);
                     var url = ProcessPropertyName(
                         lineText,
                         lineNumber + 1,
@@ -584,9 +584,9 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     string suffix = part.Substring(part.Length - suffixLength, suffixLength);
 
                     var currentPosition = range.Start + lengthSoFar;
-                    var line = TextUtilities.GetLineFromPosition(currentPosition, sourceText);
+                    var line = TextUtilities.GetLineFromPosition(currentPosition, SourceText);
                     var lineNumber = TextUtilities.GetLineNumber(currentPosition, this.lineLengths);
-                    var lineText = sourceText.Substring(line.Item1, line.Item2);
+                    var lineText = SourceText.Substring(line.Item1, line.Item2);
                     var url = ProcessItemName(
                         lineText,
                         lineNumber + 1,
@@ -632,9 +632,9 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 }
                 else
                 {
-                    var line = TextUtilities.GetLineFromPosition(currentPosition, sourceText);
+                    var line = TextUtilities.GetLineFromPosition(currentPosition, SourceText);
                     var lineNumber = TextUtilities.GetLineNumber(currentPosition, this.lineLengths);
-                    var lineText = sourceText.Substring(line.Item1, line.Item2);
+                    var lineText = SourceText.Substring(line.Item1, line.Item2);
                     var url = ProcessTargetName(
                         lineText,
                         lineNumber + 1,

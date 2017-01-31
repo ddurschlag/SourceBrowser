@@ -13,7 +13,10 @@
         internal void GenerateXaml(string sourceXmlFile, string destinationHtmlFile, string relativePath)
         {
             this.relativePath = relativePath;
-            base.Generate(sourceXmlFile, destinationHtmlFile, projectGenerator.IOManager);
+
+            var ioManager = projectGenerator.IOManager;
+
+            base.Generate(sourceXmlFile, ioManager.GetFileText(sourceXmlFile), ioManager.GetFileLineCount(sourceXmlFile), destinationHtmlFile, ioManager);
         }
 
         protected override string GetAssemblyName()

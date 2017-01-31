@@ -225,10 +225,9 @@ namespace Microsoft.SourceBrowser.IO
             return File.ReadAllLines(assemblyIndex);
         }
 
-        [Obsolete("This interface seems far too broad")]
-        public void Write(string file, string contents)
+        public void WriteIndex(string contents)
         {
-            File.WriteAllText(Path.Combine(ProjectDestinationFolder, file), contents);
+            File.WriteAllText(Path.Combine(ProjectDestinationFolder, Constants.INDEX_PATH), contents);
         }
 
         public StreamWriter GetNamespaceWriter()

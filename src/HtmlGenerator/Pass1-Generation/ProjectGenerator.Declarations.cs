@@ -40,10 +40,11 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                 {
                     var declaredSymbolName = declaredSymbol.Name;
                     if (declaredSymbolName != ".ctor" &&
-                        declaredSymbolName != ".cctor" &&
-                        !DeclaredSymbols.ContainsKey(declaredSymbol))
+                        declaredSymbolName != ".cctor"
+                    //&&  !DeclaredSymbols.Contains(declaredSymbol)
+                        )
                     {
-                        DeclaredSymbols.Add(declaredSymbol, symbolId);
+                        DeclaredSymbols.Add(declaredSymbol);
                     }
                 }
             }
@@ -98,28 +99,30 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
         }
 
-        private IEnumerable<Common.Entity.DeclaredSymbolInfo> GetDeclaredSymbolLines(IEnumerable<KeyValuePair<ISymbol, string>> declaredSymbols)
+        private IEnumerable<Common.Entity.DeclaredSymbolInfo> GetDeclaredSymbolLines(IEnumerable<ISymbol> declaredSymbols)
         {
             if (declaredSymbols != null)
             {
                 foreach (var declaredSymbol in declaredSymbols
-                    .OrderBy(s => SymbolIdService.GetName(s.Key))
-                    .ThenBy(s => SymbolIdService.GetId(s.Key)))
+                    .OrderBy(s => SymbolIdService.GetName(s))
+                    .ThenBy(s => SymbolIdService.GetId(s)))
                 {
-                    if (declaredSymbol.Value != SymbolIdService.GetId(declaredSymbol.Key))
-                    {
-                        Console.WriteLine("Inconsistency:");
-                        Console.WriteLine(declaredSymbol.Value);
-                        Console.WriteLine(SymbolIdService.GetId(declaredSymbol.Key));
-                        throw new Exception("INCONSISTENCY!");
-                    }
+
+                //todo: Confirm this can be deleted. It should always be the case!
+                    //if (declaredSymbol.Value != SymbolIdService.GetId(declaredSymbol.Key))
+                    //{
+                    //    Console.WriteLine("Inconsistency:");
+                    //    Console.WriteLine(declaredSymbol.Value);
+                    //    Console.WriteLine(SymbolIdService.GetId(declaredSymbol.Key));
+                    //    throw new Exception("INCONSISTENCY!");
+                    //}
 
                     yield return new Utilities.DeclaredSymbolInfoFactory().Manufacture(
-                        SymbolIdService.GetId(declaredSymbol.Key),
-                        SymbolIdService.GetName(declaredSymbol.Key),
-                        SymbolKindText.GetSymbolKind(declaredSymbol.Key),
-                        Markup.EscapeSemicolons(SymbolIdService.GetDisplayString(declaredSymbol.Key)),
-                        SymbolIdService.GetGlyphNumber(declaredSymbol.Key).ToString()
+                        SymbolIdService.GetId(declaredSymbol),
+                        SymbolIdService.GetName(declaredSymbol),
+                        SymbolKindText.GetSymbolKind(declaredSymbol),
+                        Markup.EscapeSemicolons(SymbolIdService.GetDisplayString(declaredSymbol)),
+                        SymbolIdService.GetGlyphNumber(declaredSymbol).ToString()
                     );
 
                     //yield return string.Join(";",

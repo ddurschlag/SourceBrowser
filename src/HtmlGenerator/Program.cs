@@ -339,8 +339,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         private static void GenerateLooseFilesProject(string projectName, string solutionDestinationPath)
         {
-            var projectGenerator = new ProjectGenerator(projectName, new IO.SolutionManager(solutionDestinationPath));
-            projectGenerator.GenerateNonProjectFolder();
+            var projectGenerator = new LooseFilesProjectGenerator(IOManager.GetProjectManager(projectName));
+            projectGenerator.Generate();
         }
     }
 }

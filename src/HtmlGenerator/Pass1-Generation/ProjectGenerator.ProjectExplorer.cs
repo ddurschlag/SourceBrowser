@@ -27,7 +27,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         {
             sb.AppendLine("<p class=\"projectInfo\">");
 
-            var namedTypes = this.DeclaredSymbols.Keys.OfType<INamedTypeSymbol>();
+            var namedTypes = this.DeclaredSymbols.OfType<INamedTypeSymbol>();
             sb.AppendLine("Project&nbsp;path:&nbsp;" + ProjectSourcePath + "<br>");
             sb.AppendLine("Files:&nbsp;" + DocumentCount.WithThousandSeparators() + "<br>");
             sb.AppendLine("Lines&nbsp;of&nbsp;code:&nbsp;" + LinesOfCode.WithThousandSeparators() + "<br>");

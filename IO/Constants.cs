@@ -2,6 +2,8 @@
 {
     public class Constants
     {
+        public const string INDEX_PATH = "index.html";
+
         public static readonly string IDResolvingFileName = "A";
         public static readonly string PartialResolvingFileName = "P";
         public static readonly string ReferencesFileName = "R";

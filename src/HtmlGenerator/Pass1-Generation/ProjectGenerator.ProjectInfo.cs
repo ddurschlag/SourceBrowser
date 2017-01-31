@@ -15,7 +15,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         private void GenerateProjectInfo()
         {
             Log.Write("Project info...");
-            var namedTypes = this.DeclaredSymbols.Keys.OfType<INamedTypeSymbol>();
+            var namedTypes = this.DeclaredSymbols.OfType<INamedTypeSymbol>();
             var sb = new StringBuilder();
             sb.AppendLine("ProjectSourcePath=" + ProjectSourcePath);
             sb.AppendLine("DocumentCount=" + DocumentCount);

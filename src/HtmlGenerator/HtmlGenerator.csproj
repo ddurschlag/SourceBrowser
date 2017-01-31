@@ -158,6 +158,7 @@
     <Compile Include="Pass1-Generation\DocumentGenerator.References.cs" />
     <Compile Include="Pass1-Generation\Federation.cs" />
     <Compile Include="Pass1-Generation\GenerateFromBuildLog.cs" />
+    <Compile Include="Pass1-Generation\LooseFilesProjectGenerator.cs" />
     <Compile Include="Pass1-Generation\MetadataAsSource.cs" />
     <Compile Include="Pass1-Generation\MSBuildSupport.cs" />
     <Compile Include="Pass1-Generation\ProjectGenerator.cs" />

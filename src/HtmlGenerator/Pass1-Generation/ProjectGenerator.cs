@@ -16,7 +16,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         public Project Project { get; private set; }
         public SymbolIndex SymbolIDToListOfLocationsMap { get; private set; }
-        public Dictionary<ISymbol, string> DeclaredSymbols { get; private set; }
+        public ICollection<ISymbol> DeclaredSymbols { get; private set; }
         public Dictionary<ISymbol, ISymbol> BaseMembers { get; private set; }
         public MultiDictionary<ISymbol, ISymbol> ImplementedInterfaceMembers { get; set; }
 
@@ -29,80 +29,19 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
         public IEnumerable<MEF.ISymbolVisitor> PluginSymbolVisitors { get; private set; }
         public IEnumerable<MEF.ITextVisitor> PluginTextVisitors { get; private set; }
 
-        public ProjectGenerator(SolutionGenerator solutionGenerator, Project project) : this()
+        public ProjectGenerator(SolutionGenerator solutionGenerator, Project project)
         {
+            this.SymbolIDToListOfLocationsMap = new SymbolIndex();
+            this.OtherFiles = new List<string>();
             this.SolutionGenerator = solutionGenerator;
             this.Project = project;
             this.ProjectFilePath = project.FilePath ?? solutionGenerator.ProjectFilePath;
-            this.DeclaredSymbols = new Dictionary<ISymbol, string>();
+            this.DeclaredSymbols = new HashSet<ISymbol>();
             this.BaseMembers = new Dictionary<ISymbol, ISymbol>();
             this.ImplementedInterfaceMembers = new MultiDictionary<ISymbol, ISymbol>();
             this.assemblyAttributesFileName = MetadataAsSource.GeneratedAssemblyAttributesFileName + (project.Language == LanguageNames.CSharp ? ".cs" : ".vb");
             PluginSymbolVisitors = SolutionGenerator.PluginAggregator.ManufactureSymbolVisitors(project).ToArray();
             PluginTextVisitors = SolutionGenerator.PluginAggregator.ManufactureTextVisitors(project).ToArray();
-        }
-
-        /// <summary>
-        /// This constructor is used for non-C#/VB projects such as "MSBuildFiles"
-        /// </summary>
-        public ProjectGenerator(string folderName, IO.SolutionManager ioManager) : this()
-        {
-            //TODO: is this needed? Should this constructor actually be a different implementation of the same interface?
-            IOManager = ioManager.GetProjectManager(folderName);
-            IOManager.CreateOutgoingReferencesDirectory();
-        }
-
-        private static HashSet<string> RedirectFileNames = new HashSet<string>
-        {
-            "A",
-            "A1",
-            "A2",
-            "A3",
-            "A4",
-            "A5",
-            "A6",
-            "A7",
-            "A8",
-            "A9",
-            "Aa",
-            "Ab",
-            "Ac",
-            "Ad",
-            "Ae",
-            "Af",
-        };
-
-        private void AddHtmlFilesToRedirectMap()
-        {
-            foreach (var file in IOManager.GetHtmlOutputFiles())
-            {
-            //todo: Pull into ProjectManager
-                var relativePath = file.Substring(IOManager.ProjectDestinationFolder.Length + 1).Replace('\\', '/');
-                relativePath = relativePath.Substring(0, relativePath.Length - 5); // strip .html
-                if (!RedirectFileNames.Contains(relativePath))
-                {
-                    AddFileToRedirectMap(relativePath);
-                    OtherFiles.Add(relativePath);
-                }
-            }
-        }
-
-        private void AddFileToRedirectMap(string filePath)
-        {
-            lock (SymbolIDToListOfLocationsMap)
-            {
-                SymbolIDToListOfLocationsMap.Add(
-                    SymbolIdService.GetId(filePath),
-                    filePath,
-                    0L
-                );
-            }
-        }
-
-        private ProjectGenerator()
-        {
-            this.SymbolIDToListOfLocationsMap = new SymbolIndex();
-            this.OtherFiles = new List<string>();
         }
 
         public async Task Generate()
@@ -185,19 +124,10 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             }
         }
 
-        public void GenerateNonProjectFolder()
-        {
-            AddHtmlFilesToRedirectMap();
-            GenerateDeclarations(true);
-            GenerateSymbolIDToListOfDeclarationLocationsMap(
-                SymbolIDToListOfLocationsMap,
-                true);
-        }
-
         private void GenerateNamespaceExplorer()
         {
             Log.Write("Namespace Explorer...");
-            var symbols = this.DeclaredSymbols.Keys.OfType<INamedTypeSymbol>()
+            var symbols = this.DeclaredSymbols.OfType<INamedTypeSymbol>()
                 .Select(s => new Utilities.DeclaredSymbolInfoFactory().Manufacture(s, this.AssemblyName));
             new NamespaceExplorer(this.AssemblyName, IOManager).WriteNamespaceExplorer(symbols);
         }
@@ -221,7 +151,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             Log.Write("Index.html...");
             var sb = new StringBuilder();
             Markup.WriteProjectIndex(sb, Project.AssemblyName);
-            IOManager.Write("index.html", sb.ToString());
+            IOManager.WriteIndex(sb.ToString());
         }
 
         private bool IsCSharp

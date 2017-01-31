@@ -58,6 +58,17 @@ namespace Microsoft.SourceBrowser.HtmlGenerator.Utilities
             );
         }
 
+        public DeclaredSymbolInfo Manufacture(string filePath)
+        {
+            return Manufacture(
+                SymbolIdService.GetId(filePath),
+                System.IO.Path.GetFileName(filePath),
+                "file",
+                Markup.EscapeSemicolons(filePath),
+                Serialization.GetIconForExtension(filePath)
+            );
+        }
+
         private static ushort ParseGlyph(string part)
         {
             ushort value;
