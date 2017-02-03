@@ -28,6 +28,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
             bool? forceContinue = null;
             bool waitAtEnd = false;
             var serverPathMappings = new Dictionary<string, string>();
+            var pluginBlacklist = new List<string>();
 
             foreach (var arg in args)
             {
@@ -134,6 +135,12 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     continue;
                 }
 
+                if (arg.StartsWith("/noplugin:"))
+                {
+                    pluginBlacklist.Add(arg.Substring("/noplugin:".Length));
+                    continue;
+                }
+
                 if (arg == "/continue")
                 {
                     forceContinue = true;
@@ -190,7 +197,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                     federation.AddFederation(entry.Key, entry.Value);
                 }
 
-                IndexSolutions(projects, properties, federation, serverPathMappings);
+                IndexSolutions(projects, properties, federation, serverPathMappings, pluginBlacklist);
                 FinalizeProjects(emitAssemblyList, federation);
             }
             if (waitAtEnd)
@@ -238,7 +245,7 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
 
         private static readonly Folder<Project> mergedSolutionExplorerRoot = new Folder<Project>();
 
-        private static void IndexSolutions(IEnumerable<string> solutionFilePaths, Dictionary<string, string> properties, Federation federation, Dictionary<string, string> serverPathMappings)
+        private static void IndexSolutions(IEnumerable<string> solutionFilePaths, Dictionary<string, string> properties, Federation federation, Dictionary<string, string> serverPathMappings, IEnumerable<string> pluginBlacklist)
         {
             var assemblyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -262,7 +269,8 @@ namespace Microsoft.SourceBrowser.HtmlGenerator
                         Paths.SolutionDestinationFolder,
                         properties: properties.ToImmutableDictionary(),
                         federation: federation,
-                        serverPathMappings: serverPathMappings))
+                        serverPathMappings: serverPathMappings,
+                        pluginBlacklist: pluginBlacklist))
                     {
                         solutionGenerator.GlobalAssemblyList = assemblyNames;
                         solutionGenerator.Generate(solutionExplorerRoot: mergedSolutionExplorerRoot);
